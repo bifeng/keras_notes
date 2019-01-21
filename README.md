@@ -1,1 +1,1 @@
-# keras_notes
+# deep learning coding notes

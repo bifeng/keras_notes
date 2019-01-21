@@ -1,7 +1,7 @@
 import numpy as np
-
 from keras.models import Sequential
-from generator.generator import DataGenerator
+from keras_notes.generator.generator import DataGenerator
+path = './keras_notes/'
 
 # Parameters
 params = {'dim': (32,32,32),
@@ -13,6 +13,12 @@ params = {'dim': (32,32,32),
 # Datasets
 partition = {'train': ['id-1', 'id-2', 'id-3'], 'validation': ['id-4']} # IDs
 labels = {'id-1': 0, 'id-2': 1, 'id-3': 2, 'id-4': 1} # Labels
+
+# id_1
+id_1 = np.load(path + 'data/' + 'id-1' + '.npy')
+# id_1.shape
+# (32, 32, 32, 1)
+
 
 # Generators
 training_generator = DataGenerator(partition['train'], labels, **params)

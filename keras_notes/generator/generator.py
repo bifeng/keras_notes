@@ -1,8 +1,10 @@
 # refer
 # https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
+# https://github.com/afshinea/keras-data-generator
 
 import numpy as np
 import keras
+path = ''
 
 
 class DataGenerator(keras.utils.Sequence):
@@ -38,12 +40,15 @@ class DataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         'Updates indexes after each epoch'
+
+        'the method on_epoch_end is triggered once at the very beginning as well as at the end of each epoch. '
         self.indexes = np.arange(len(self.list_IDs))
         if self.shuffle == True:
             np.random.shuffle(self.indexes)
 
     def __data_generation(self, list_IDs_temp):
         'Generates data containing batch_size samples' # X : (n_samples, *dim, n_channels)
+
         'note that you can do more complex operations instead ' \
         '(e.g. computations from source files) without worrying that ' \
         'data generation becomes a bottleneck in the training process.'
@@ -54,7 +59,7 @@ class DataGenerator(keras.utils.Sequence):
         # Generate data
         for i, ID in enumerate(list_IDs_temp):
             # Store sample
-            X[i,] = np.load('data/' + ID + '.npy')
+            X[i,] = np.load(path + 'data/' + ID + '.npy')
 
             # Store class
             y[i] = self.labels[ID]
