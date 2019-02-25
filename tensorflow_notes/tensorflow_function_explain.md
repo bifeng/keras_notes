@@ -66,6 +66,10 @@ tf.trainable_variables
 
 ## tensorboard
 
+https://github.com/tensorflow/tensorboard
+
+
+
 motivation: visualization metrics and graph, Weights, Gradients and Activations 
 
 
