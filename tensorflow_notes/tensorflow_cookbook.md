@@ -1,5 +1,5 @@
 https://github.com/taki0112/Tensorflow-Cookbook
-
+https://github.com/nfmcclure/tensorflow_cookbook
 refer:<br>https://hanxiao.github.io/2017/11/08/Optimizing-Contrastive-Rank-Triplet-Loss-in-Tensorflow-for-Neural/
 
 
@@ -102,13 +102,21 @@ define the objective function:
 
 
 
+#### batch size
+
+how to set the batch size?
+
+For classification, the batch size is the multiple times of class labels ?
 
 
 
+#### buffer size
 
+https://stackoverflow.com/questions/46444018/meaning-of-buffer-size-in-dataset-map-dataset-prefetch-and-dataset-shuffle
 
+The `buffer_size` in `Dataset.shuffle()` can affect the randomness of your dataset, and hence the order in which elements are produced. 
 
-
+The `buffer_size` in `Dataset.prefetch()` only affects the time it takes to produce the next element.
 
 
 

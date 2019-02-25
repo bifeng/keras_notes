@@ -18,7 +18,91 @@ data/operations/...
 
 
 
+## basic
 
+### variable
+
+tf.constant
+
+tf.placeholder -> parameters: type, dimension, name
+
+
+
+tf.Variable
+
+
+
+tf.zeros
+
+tf.random_normal
+
+
+
+tf.name_scope ?
+
+
+
+### operation
+
+tf.add, tf.multiply, tf.matmul, 
+
+tf.cast
+
+
+
+tf.Session() ?
+
+sess.run
+
+
+
+tf.get_default_graph
+
+
+
+tf.trainable_variables
+
+
+
+## tensorboard
+
+motivation: visualization metrics and graph, Weights, Gradients and Activations 
+
+
+
+step1 encapsulating all ops into scopes (tf.name_scope) and create a summary to monitor metrics (tf.summary)
+
+step2 write logs to Tensorboard (tf.summary.FileWriter)
+
+step3 run the following command, then open http://0.0.0.0:6006/ into your web browser
+
+```bash
+tensorboard --logdir=/tmp/tensorflow_logs 
+```
+
+
+
+## Debugger
+
+motivation:
+
+
+
+https://github.com/tensorflow/tensorflow/tree/master/tensorflow/python/debug
+
+
+
+## Eager
+
+motivation: Eager execution is an imperative, define-by-run interface where operations are executed immediately as they are called from Python.
+
+
+
+https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/python/g3doc/guide.md
+
+
+
+tfe.enable_eager_execution
 
 
 
