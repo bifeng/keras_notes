@@ -11,3 +11,8 @@ tensorboard_basic.py    - more application
 tensorboard_advanced.py - more application
 
 
+todo:
+tensorboard - 理解图表 
+https://www.cnblogs.com/fydeblog/p/7429344.html 
+
+
