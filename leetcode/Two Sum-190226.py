@@ -13,7 +13,7 @@ def twoSum(nums, target):
     """
     out_ = []
     for j in range(len(nums)):
-        for i in range(j+1, len(nums)):  # 遍历j后面的每个元素
+        for i in range(j+1, len(nums)):  # 遍历j后面的每个元素 good!
             if nums[i] + nums[j]==target:
                 out_ = [i] + [j]
     return out_

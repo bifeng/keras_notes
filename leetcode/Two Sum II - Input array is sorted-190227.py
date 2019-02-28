@@ -28,7 +28,7 @@ def twoSum(nums: List[int], target: int) -> List[int]:
     :type target: int
     :rtype: List[int]
     """
-    i, j = 0, len(nums)-1
+    i, j = 0, len(nums)-1  # good!
     while i < j:
         if nums[i] + nums[j] == target:
             return [i,j]
