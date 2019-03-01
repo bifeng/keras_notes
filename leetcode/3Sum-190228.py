@@ -53,7 +53,7 @@ class Solution:
                     while j < k and nums[k] == nums[k-1]:
                         k += -1
 
-                    # Because you need to skip two identical numbers , if it exists
+                    # Because you need to skip two identical numbers, if it exists
                     j += 1
                     k += -1
         return result

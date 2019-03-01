@@ -1,6 +1,13 @@
 '''
 https://leetcode.com/problems/two-sum/solution/
-hash map
+1, hash map
+-哈希值判断另外一个数是否存在
+
+2, 双指针
+-双指针从左右两边向中间遍历
+-但是需要copy原始列表，以提取原始index
+-还需要从列表提取数值相等的两个数字index
+
 '''
 
 # first method
@@ -28,6 +35,7 @@ def twoSum(nums, target):
 # 1、元素的查询和插入操作很快，基本上是常数级别
 # 2、占用内存较大，采用的是空间换时间的方法
 
+
 # Runtime 56 ms
 def twoSum(nums, target):
     """
@@ -43,5 +51,38 @@ def twoSum(nums, target):
             sum_value[nums[j]] = j
 
 
-twoSum([3,3], 6)
+# Runtime 56 ms
+class Solution(object):
+    def twoSum(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: List[int]
+        """
+        new_nums = nums.copy()
+        new_nums.sort()
+        i, j = 0, len(new_nums) - 1
+
+        while i < j:
+            s = new_nums[i] + new_nums[j]
+
+            if s > target:
+                j -= 1
+            elif s < target:
+                i += 1
+            else:
+
+                if new_nums[i] == new_nums[j]:
+                    result = [index for index,v in enumerate(nums) if v == new_nums[i]]
+                else:
+                    result = [nums.index(new_nums[i]), nums.index(new_nums[j])]
+                result.sort()
+                return result
+
+
+tt = Solution()
+# nums, target = [3,3], 6
+nums, target = [3,2,3], 6
+# nums, target = [3,2,4], 6
+tt.twoSum(nums, target )
 

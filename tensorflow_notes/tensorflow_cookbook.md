@@ -114,7 +114,7 @@ For classification, the batch size is the multiple times of class labels ?
 
 https://stackoverflow.com/questions/46444018/meaning-of-buffer-size-in-dataset-map-dataset-prefetch-and-dataset-shuffle
 
-The `buffer_size` in `Dataset.shuffle()` can affect the randomness of your dataset, and hence the order in which elements are produced. 
+The `buffer_size` in `Dataset.shuffle()` can affect the randomness of your dataset, and hence the order in which elements are produced. Instead of shuffling the entire dataset, it maintains a buffer of `buffer_size` elements, and randomly selects the next element from that buffer (replacing it with the next input element, if one is available). Changing the value of `buffer_size` affects how uniform the shuffling is: if `buffer_size` is greater than the number of elements in the dataset, you get a uniform shuffle; if it is `1` then you get no shuffling at all. <u>For very large datasets, a typical "good enough" approach is to randomly shard the data into multiple files once before training, then shuffle the filenames uniformly, and then use a smaller shuffle buffer.</u> However, the appropriate choice will depend on the exact nature of your training job.
 
 The `buffer_size` in `Dataset.prefetch()` only affects the time it takes to produce the next element.
 

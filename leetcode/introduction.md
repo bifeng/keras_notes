@@ -6,7 +6,7 @@ www.leetcode.com <Bieng_1985>
 
 解法参考：<br>https://github.com/huxiaoman7/leetcodebook
 
-https://github.com/csujedihy/lc-all-solutions
+https://github.com/csujedihy/lc-all-solutions :star::star::star::star::star:
 
 
 
@@ -24,7 +24,10 @@ https://github.com/princewen/leetcode_python/tree/master/sort_by_leetcode
 
 
 
-
-
-
-
+## todo
+K-SUM类题目
+数组排序
+双指针问题
+二维数组（哈希）
+基础题目
+Search类题
