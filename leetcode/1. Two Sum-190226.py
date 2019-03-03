@@ -37,6 +37,8 @@ def twoSum(nums, target):
 
 
 # Runtime 56 ms
+# 1, hash
+# key-元素，value-元素索引
 def twoSum(nums, target):
     """
     :type nums: List[int]

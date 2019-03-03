@@ -6,9 +6,9 @@ www.leetcode.com <Bieng_1985>
 
 解法参考：<br>https://github.com/huxiaoman7/leetcodebook
 
-https://github.com/csujedihy/lc-all-solutions :star::star::star::star::star:
+https://github.com/csujedihy/lc-all-solutions :star::star::star::star::star: 
 
-
+https://zhuanlan.zhihu.com/p/25697275 :star::star::star::star::star: 
 
 https://github.com/apachecn/awesome-algorithm/tree/master/docs/Leetcode_Solutions/Python
 
@@ -24,10 +24,22 @@ https://github.com/princewen/leetcode_python/tree/master/sort_by_leetcode
 
 
 
-## todo
-K-SUM类题目
-数组排序
-双指针问题
-二维数组（哈希）
-基础题目
-Search类题
+## Methods Summary
+
+| methods            | data structure |      |
+| ------------------ | -------------- | ---- |
+| 哈希表(Hash Table) | dict/set       |      |
+| 双指针             |                |      |
+| Binary Search Tree |                |      |
+
+
+
+搜索？
+
+排序？
+
+
+
+
+
+
