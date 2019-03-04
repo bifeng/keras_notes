@@ -39,7 +39,10 @@ https://github.com/princewen/leetcode_python/tree/master/sort_by_leetcode
 排序？
 
 
+## todo
+[Contains Duplicate](https://stackoverflow.com/questions/7571635/fastest-way-to-check-if-a-value-exist-in-a-list)
 
+[Contains Duplicate II](https://leetcode.com/problems/contains-duplicate-ii/discuss/61396/Use-hashset-40ms-python-beat-94.) 
 
 
 
