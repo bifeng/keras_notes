@@ -3,11 +3,8 @@ import numpy
 rdn = numpy.random
 
 # 0. 训练数据
-train_X = numpy.asarray([3.3,4.4,5.5,6.71,6.93,4.168,9.779,6.182,7.59,2.167,
-                         7.042,10.791,5.313,7.997,5.654,9.27,3.1])
-train_Y = numpy.asarray([1.7,2.76,2.09,3.19,1.694,1.573,3.366,2.596,2.53,1.221,
-                         2.827,3.465,1.65,2.904,2.42,2.94,1.3])
-n_samples = train_X.shape[0]
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
 
 # 1. 构建计算图
@@ -21,17 +18,17 @@ n_samples = train_X.shape[0]
 
 
 # 输入、权重变量
-X = tf.placeholder(tf.float32, name='X')
-Y = tf.placeholder(tf.float32, name='Y')
+X = tf.placeholder(tf.float32, shape=[None, 784], name='X')
+Y = tf.placeholder(tf.float32, shape=[None, 10], name='Y')
 
 W = tf.Variable(initial_value=rdn.rand(), name='weight')
 b = tf.Variable(initial_value=rdn.rand(), name='bias')
 
 # 模型
-linear_model = tf.add(tf.multiply(X,W),b)
+logistic_model = tf.nn.softmax(tf.add(tf.multiply(X,W),b))
 
 # 损失函数
-loss = tf.reduce_mean(tf.pow(linear_model-Y,2))
+loss = tf.reduce_mean(-tf.reduce_sum(y*tf.log(logistic_model), reduction_indices=1))
 
 # 优化器
 learning_rate = 0.01

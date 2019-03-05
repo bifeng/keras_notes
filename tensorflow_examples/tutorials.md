@@ -1,3 +1,6 @@
+[TensorFlow-Examples](https://github.com/aymericdamien/TensorFlow-Examples)
+
+
 done:
 helloworld.py
 basic_operations.py
@@ -12,7 +15,6 @@ tensorboard_advanced.py - more application
 
 todo:
 linear_regression.py
-linear_regression_eager_api.py
+logistic_regression.py
 neural_network.py
-neural_network_eager_api.py
 

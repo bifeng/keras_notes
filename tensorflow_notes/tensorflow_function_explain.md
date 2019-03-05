@@ -24,7 +24,29 @@ data/operations/...
 
 tf.constant
 
+
+
 tf.placeholder -> parameters: type, dimension, name
+
+```python
+def placeholder(dtype, shape=None, name=None):
+  """Inserts a placeholder for a tensor that will be always fed.
+
+  **Important**: This tensor will produce an error if evaluated. Its value must be fed using the `feed_dict` optional argument to `Session.run()`, `Tensor.eval()`, or `Operation.run()`.
+
+  For example:
+
+  ```python
+  x = tf.placeholder(tf.float32, shape=(1024, 1024))
+  y = tf.matmul(x, x)
+
+  with tf.Session() as sess:
+    print(sess.run(y))  # ERROR: will fail because x was not fed.
+
+    rand_array = np.random.rand(1024, 1024)
+    print(sess.run(y, feed_dict={x: rand_array}))  # Will succeed.
+  ```
+```
 
 
 
@@ -50,23 +72,35 @@ tf.cast
 
 
 
+tf.trainable_variables
+
+
+
+tf.implicit_gradients
+
+
+
+#### Session
+
 tf.Session() ?
 
 sess.run
 
+tf.get_default_session
 
+
+
+#### Graph
 
 tf.get_default_graph
 
 
 
-tf.trainable_variables
+#### Initialization
 
+tf.variables_initializer 
 
-
-tf.apply_gradients
-
-tf.implicit_gradients
+tf.global_variables_initializer
 
 
 
@@ -91,7 +125,13 @@ optimizer.minimize
 
 + compute gradients
 
+  
+
+
+
 + apply gradients
+
+  
 
 
 
@@ -167,6 +207,125 @@ def clip_by_global_norm(t_list, clip_norm, use_norm=None, name=None):
 + 梯度裁剪可能产生的问题？
 
   不收敛？迭代时间长？
+
+
+
+#### loss
+
+
+
+##### cross entropy
+
+more:https://www.jianshu.com/p/cf235861311b
+
+todo:<br>公式 
+
+```python
+def softmax_cross_entropy_with_logits(
+    _sentinel=None,  # pylint: disable=invalid-name
+    labels=None,
+    logits=None,
+    dim=-1,
+    name=None):
+  """Computes softmax cross entropy between `logits` and `labels`.
+
+  Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class).  
+  For example, each CIFAR-10 image is labeled with one and only one label: an image can be a dog or a truck, but not both.
+
+  **NOTE:**  While the classes are mutually exclusive, their probabilities need not be.  All that is required is that each row of `labels` is a valid probability distribution.  If they are not, the computation of the gradient will be incorrect.
+
+  **WARNING:** This op expects unscaled logits, since it performs a `softmax` on `logits` internally for efficiency.  Do not call this op with the output of `softmax`, as it will produce incorrect results.
+
+  A common use case is to have logits and labels of shape
+  `[batch_size, num_classes]`, but higher dimensions are supported, with the `dim` argument specifying the class dimension.
+
+  Backpropagation will happen only into `logits`.
+  """
+  _ensure_xent_args("softmax_cross_entropy_with_logits", _sentinel, labels,
+                    logits)
+
+  with ops.name_scope(name, "softmax_cross_entropy_with_logits_sg",
+                      [logits, labels]) as name:
+    labels = array_ops.stop_gradient(labels, name="labels_stop_gradient")
+
+  return softmax_cross_entropy_with_logits_v2(
+      labels=labels, logits=logits, dim=dim, name=name)
+  
+```
+
+1. the classes are mutually exclusive<br>
+2. Backpropagation will happen only into `logits`.
+
+```python
+def softmax_cross_entropy_with_logits_v2(
+    _sentinel=None,  # pylint: disable=invalid-name
+    labels=None,
+    logits=None,
+    dim=-1,
+    name=None):
+  """Computes softmax cross entropy between `logits` and `labels`.
+
+...
+
+  Backpropagation will happen into both `logits` and `labels`.  To disallow backpropagation into `labels`, pass label tensors through `tf.stop_gradient` before feeding it to this function.
+  """
+```
+
+Backpropagation will happen into both `logits` and `labels`.
+
+```python
+def sigmoid_cross_entropy_with_logits(  # pylint: disable=invalid-name
+    _sentinel=None,
+    labels=None,
+    logits=None,
+    name=None):
+    """Computes sigmoid cross entropy given `logits`.
+
+  Measures the probability error in discrete classification tasks in which each class is independent and not mutually exclusive.  
+  For instance, one could perform multilabel classification where a picture can contain both an elephant and a dog at the same time.
+
+  For brevity, let `x = logits`, `z = labels`.  The logistic loss is
+        z * -log(sigmoid(x)) + (1 - z) * -log(1 - sigmoid(x))
+      = z * -log(1 / (1 + exp(-x))) + (1 - z) * -log(exp(-x) / (1 + exp(-x)))
+      = z * log(1 + exp(-x)) + (1 - z) * (-log(exp(-x)) + log(1 + exp(-x)))
+      = z * log(1 + exp(-x)) + (1 - z) * (x + log(1 + exp(-x))
+      = (1 - z) * x + log(1 + exp(-x))
+      = x - x * z + log(1 + exp(-x))
+
+  For x < 0, to avoid overflow in exp(-x), we reformulate the above
+        x - x * z + log(1 + exp(-x))
+      = log(exp(x)) - x * z + log(1 + exp(-x))
+      = - x * z + log(1 + exp(x))
+
+  Hence, to ensure stability and avoid overflow, the implementation uses this equivalent formulation
+      max(x, 0) - x * z + log(1 + exp(-abs(x)))
+      """
+```
+
+each class is independent and not mutually exclusive
+
+```python
+def sparse_softmax_cross_entropy_with_logits(
+    _sentinel=None,  # pylint: disable=invalid-name
+    labels=None,
+    logits=None,
+    name=None):
+    
+```
+
+
+
+```python
+def weighted_cross_entropy_with_logits(targets, logits, pos_weight, name=None):
+
+```
+
+
+
+##### question
+
++ Backpropagation will happen into both `logits` and `labels` ?
++ 
 
 
 
