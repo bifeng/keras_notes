@@ -155,6 +155,59 @@ class Solution:
         return [list(i) for i in res]
 
 
+# third methods
+# Runtime 108ms
+# 基本思路：将多数求和不断转化为两数求和
+# Good Solution!
+class Solution:
+    def fourSum(self, nums, target):
+        def findNsum(nums, target, N, result, results):
+
+            # early termination (1-数字不够,2-第一个太大,3-最后一个太小)
+            if N < 2 or len(nums) < N or target < nums[0]*N or target > nums[-1]*N:
+                return
+
+            # two pointers solve sorted 2-sum problem
+            if N == 2:
+                l,r = 0,len(nums)-1
+                while l < r:
+                    s = nums[l] + nums[r]
+                    if s == target:
+                        results.append(result + [nums[l], nums[r]])
+
+                        # todo 为什么是l-1而不是l+1?
+                        # https://leetcode.com/problems/4sum/discuss/8545/Python-140ms-beats-100-and-works-for-N-sum-(Ngreater2)
+                        # skip the duplicates
+                        while l < r and nums[l] == nums[l-1]:
+                            l += 1
+                        while l < r and nums[r] == nums[r+1]:
+                            r -= 1
+
+                        # while l < r and nums[l] == nums[l+1]:
+                        #     l += 1
+                        # while l < r and nums[r] == nums[r-1]:
+                        #     r -= 1
+
+                        l += 1
+                        r -=1
+
+                    elif s < target:
+                        l += 1
+                    else:
+                        r -= 1
+
+            else:
+                # recursively reduce N
+                for i in range(len(nums)-N+1):
+                    if i == 0 or (i > 0 and nums[i] != nums[i-1]):
+                        findNsum(nums[i+1:], target-nums[i], N-1, result+[nums[i]], results)
+
+        nums.sort()
+        results = []
+        findNsum(nums, target, 4, [], results)
+        return results
+
+
 tt = Solution()
 nums, target = [1, 0, -1, 0, -2, 2], 0
 # output [[-2, -1, 1, 2], [-1, -1, 0, 2], [-2, 0, 0, 2], [-1, 0, 0, 1]]
