@@ -66,17 +66,40 @@ tf.name_scope ?
 
 ### operation
 
-tf.add, tf.multiply, tf.matmul, 
-
-tf.cast
-
-
-
 tf.trainable_variables
 
 
 
 tf.implicit_gradients
+
+
+
+
+
+tf.add,
+
+
+
+tf.cast
+
+```python
+def cast(x, dtype, name=None):
+  """Casts a tensor to a new type.
+
+  The operation casts `x` (in case of `Tensor`) or `x.values`
+  (in case of `SparseTensor` or `IndexedSlices`) to `dtype`.
+  """
+```
+
+
+
+tf.argmax
+
+tf.argmax() - axis的用法与numpy.argmax()的axis用法一致
+
+
+
+
 
 
 
@@ -87,6 +110,22 @@ tf.Session() ?
 sess.run
 
 tf.get_default_session
+
+##### eval
+
+https://stackoverflow.com/questions/33610685/in-tensorflow-what-is-the-difference-between-session-run-and-tensor-eval<br>https://stackoverflow.com/questions/38987466/eval-and-run-in-tensorflow
+
+eval() 其实就是tf.Tensor的Session.run() 的另外一种写法。<br>eval() 只能用于tf.Tensor类对象，也就是有输出的Operation<br>Session.run()既可以用于有输出的Operation,也可以用于没有输出的Operation
+
+```python
+with tf.Session() as sess:
+  print(accuracy.eval({x:mnist.test.images,y_: mnist.test.labels}))
+
+# 等价于
+
+with tf.Session() as sess:
+  print(sess.run(accuracy, {x:mnist.test.images,y_: mnist.test.labels}))
+```
 
 
 

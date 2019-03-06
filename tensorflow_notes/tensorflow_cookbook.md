@@ -102,6 +102,20 @@ define the objective function:
 
 
 
+#### accuracy
+
++ Training accuracy falling down after some epoches
+
+  https://github.com/tensorflow/tensorflow/issues/1997
+
+  https://stackoverflow.com/questions/37044600/sudden-drop-in-accuracy-while-training-a-deep-neural-net
+
+
+
+
+
+
+
 #### batch size
 
 how to set the batch size?
