@@ -18,6 +18,39 @@ data/operations/...
 
 
 
+### model building step
+
+#### session -based
+
+1. 输入输出、权重
+2. 模型（网络结构）
+3. 损失函数
+4. 优化器
+5. 参数初始化
+6. 训练（将数据喂入）
+
+#### estimate-based
+
+1. 模型（网络结构）
+
+   tf.layers ...
+
+2. model_fn（model = tf.estimator.Estimator(model_fn)）
+
+   损失函数
+
+   优化器
+
+   评估
+
+   prediction mode
+
+3. input_fn（input_fn = tf.estimator.inputs.numpy_input_fn）
+
+4. 训练（model.train(input_fn））
+
+
+
 ## basic
 
 ### variable
@@ -45,11 +78,7 @@ def placeholder(dtype, shape=None, name=None):
 
     rand_array = np.random.rand(1024, 1024)
     print(sess.run(y, feed_dict={x: rand_array}))  # Will succeed.
-  ```
 ```
-
-
-
 tf.Variable
 
 
@@ -145,6 +174,8 @@ tf.global_variables_initializer
 
 #### Optimizer
 
+##### minimize
+
 optimizer.minimize
 
 ```python
@@ -156,6 +187,11 @@ optimizer.minimize
 
     This method simply combines calls `compute_gradients()` and
     `apply_gradients()`. If you want to process the gradient before applying them call `compute_gradients()` and `apply_gradients()` explicitly instead of using this function.
+    
+        Args:
+      global_step: Optional `Variable` to increment by one after the
+        variables have been updated.
+    """
 ```
 
 `minimize()`分为两个步骤：`compute_gradients`和`apply_gradients`，前者用于计算梯度，后者用于使用计算得到的梯度来更新对应的variable。拆分为两个步骤后，在某些情况下我们就可以对梯度做一定的修正，例如为了防止梯度消失(gradient vanishing)或者梯度爆炸(gradient explosion)。
@@ -171,6 +207,70 @@ optimizer.minimize
 + apply gradients
 
   
+
+##### global_step
+
+https://stackoverflow.com/questions/41166681/what-does-global-step-mean-in-tensorflow<br>https://blog.csdn.net/leviopku/article/details/78508951
+
+`global_step` refers to the number of batches seen by the graph. Every time a batch is provided, the weights are updated in the direction that minimizes the loss. `global_step` just keeps track of the number of batches seen so far. When it is passed in the `minimize()` argument list, the variable is increased by one. 
+
+You can get the `global_step` value using [`tf.train.global_step()`](https://www.tensorflow.org/api_docs/python/tf/train/global_step). Also handy are the utility methods [`tf.train.get_global_step`](https://www.tensorflow.org/api_docs/python/tf/train/get_global_step) or [`tf.train.get_or_create_global_step`](https://www.tensorflow.org/api_docs/python/tf/train/get_or_create_global_step).
+
+`0` is the initial value of the global step in this context.
+
+global_setp为什么能够自动加1？因为在minimize()函数中，global_steps是通过apply_gradients更新变量的同时进行更新的，每调用一次apply_gradients就会调用更新global_steps：
+
+apply_updates = state_ops.assign_add(global_step, 1, name=name)
+
+global_step在滑动平均、优化器、指数衰减学习率等方面都有用到，这个变量的实际意义非常好理解：代表全局步数，比如在多少步该进行什么操作，现在神经网络训练到多少轮等等，类似于一个钟表。
+
+Example: 指数衰减的学习率是伴随global_step的变化而衰减
+
+```python
+
+import tensorflow as tf
+import numpy as np
+ 
+x = tf.placeholder(tf.float32, shape=[None, 1], name='x')
+y = tf.placeholder(tf.float32, shape=[None, 1], name='y')
+w = tf.Variable(tf.constant(0.0))
+ 
+global_steps = tf.Variable(0, trainable=False)
+ 
+ 
+learning_rate = tf.train.exponential_decay(0.1, global_steps, 10, 2, staircase=False)
+loss = tf.pow(w*x-y, 2)
+ 
+train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_steps)
+ 
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    for i in range(10):
+        sess.run(train_step, feed_dict={x:np.linspace(1,2,10).reshape([10,1]),
+            y:np.linspace(1,2,10).reshape([10,1])})
+        print(sess.run(learning_rate))
+        print(sess.run(global_steps))
+```
+
+tf.train.get_global_step
+
+```python
+def get_global_step(graph=None):
+  """Get the global step tensor.
+
+  The global step tensor must be an integer variable. We first try to find it
+  in the collection `GLOBAL_STEP`, or by name `global_step:0`.
+
+```
+
+tf.train.get_or_create_global_step
+
+```python
+
+
+```
+
+
 
 
 
@@ -292,8 +392,15 @@ def softmax_cross_entropy_with_logits(
   
 ```
 
-1. the classes are mutually exclusive<br>
+1. the classes are mutually exclusive, their probabilities need not be. <br>
+
 2. Backpropagation will happen only into `logits`.
+
+   最后一层的softmax输出计算没有在inference里进行，那么原网络inference岂不是不完整了？
+
+   只要不影响到输出值的大小顺序，对最终结果也不会有影响。
+
+3. labels must have the shape [batch_size, num_classes] and dtype float32 or float64.
 
 ```python
 def softmax_cross_entropy_with_logits_v2(
@@ -310,7 +417,9 @@ def softmax_cross_entropy_with_logits_v2(
   """
 ```
 
-Backpropagation will happen into both `logits` and `labels`.
+1. Backpropagation will happen into both `logits` and `labels`.
+
+2. **Soft** classes are allowed, **soft** softmax classification with a probability distribution for each entry.
 
 ```python
 def sigmoid_cross_entropy_with_logits(  # pylint: disable=invalid-name
@@ -349,10 +458,27 @@ def sparse_softmax_cross_entropy_with_logits(
     labels=None,
     logits=None,
     name=None):
+  """Computes sparse softmax cross entropy between `logits` and `labels`.
+
+  Measures the probability error in discrete classification tasks in which the classes are mutually exclusive (each entry is in exactly one class).  
+  For example, each CIFAR-10 image is labeled with one and only one label: an image can be a dog or a truck, but not both.
+
+  **NOTE:**  For this operation, the probability of a given label is considered exclusive. That is, soft classes are not allowed, and the `labels` vector must provide a single specific index for the true class for each row of
+  `logits` (each minibatch entry). For soft softmax classification with a probability distribution for each entry, see `softmax_cross_entropy_with_logits_v2`.
+
+  **WARNING:** This op expects unscaled logits, since it performs a `softmax`
+  on `logits` internally for efficiency.  Do not call this op with the
+  output of `softmax`, as it will produce incorrect results.
+
+  A common use case is to have logits and labels of shape `[batch_size, num_classes]`, but higher dimensions are supported, in which case the `dim`-th dimension is assumed to be of size `num_classes`. `logits` must have the dtype of `float16`, `float32`, or `float64`, and `labels` must have the dtype of `int32` or `int64`.
+  """
     
 ```
 
-
+1. the classes are mutually exclusive, the probability of a given label is considered exclusive.<br>
+2. labels must have the shape [batch_size] and the dtype int32 or int64. Each label is an int in range `[0, num_classes-1]`.
+3. Labels used in `softmax_cross_entropy_with_logits` are the **one hot version** of labels used in `sparse_softmax_cross_entropy_with_logits`.
+4. `softmax_cross_entropy_with_logits` and `sparse_softmax_cross_entropy_with_logits`, both functions computes the same results.
 
 ```python
 def weighted_cross_entropy_with_logits(targets, logits, pos_weight, name=None):
@@ -361,10 +487,125 @@ def weighted_cross_entropy_with_logits(targets, logits, pos_weight, name=None):
 
 
 
+##### accuracy
+
+tf.metrics.accuracy
+
+```python
+def accuracy(labels,
+             predictions,
+             weights=None,
+             metrics_collections=None,
+             updates_collections=None,
+             name=None):
+  """Calculates how often `predictions` matches `labels`.
+
+  The `accuracy` function creates two local variables, `total` and
+  `count` that are used to compute the frequency with which `predictions`
+  matches `labels`. This frequency is ultimately returned as `accuracy`: an
+  idempotent operation that simply divides `total` by `count`.
+
+  For estimation of the metric over a stream of data, the function creates an
+  `update_op` operation that updates these variables and returns the `accuracy`.
+  Internally, an `is_correct` operation computes a `Tensor` with elements 1.0
+  where the corresponding elements of `predictions` and `labels` match and 0.0
+  otherwise. Then `update_op` increments `total` with the reduced sum of the
+  product of `weights` and `is_correct`, and it increments `count` with the
+  reduced sum of `weights`.
+
+  If `weights` is `None`, weights default to 1. Use weights of 0 to mask values.
+
+```
+
+
+
+
+
+
+
 ##### question
 
 + Backpropagation will happen into both `logits` and `labels` ?
 + 
+
+#### next_batch
+
+more: https://blog.csdn.net/appleml/article/details/57413615
+
+
+
+```python
+class DataSet(object):
+   def __init__(self, images, labels, fake_data=False):
+    if fake_data:
+      self._num_examples = 10000
+    else:
+      assert images.shape[0] == labels.shape[0], (
+          "images.shape: %s labels.shape: %s" % (images.shape,
+                                                 labels.shape))
+      self._num_examples = images.shape[0]
+      # Convert shape from [num examples, rows, columns, depth]
+      # to [num examples, rows*columns] (assuming depth == 1)
+      assert images.shape[3] == 1
+      images = images.reshape(images.shape[0],
+                              images.shape[1] * images.shape[2])
+      # Convert from [0, 255] -> [0.0, 1.0].
+      images = images.astype(numpy.float32)
+      images = numpy.multiply(images, 1.0 / 255.0)
+    self._images = images
+    self._labels = labels
+    self._epochs_completed = 0
+    self._index_in_epoch = 0
+    
+  def next_batch(self, batch_size, fake_data=False):
+    """Return the next `batch_size` examples from this data set."""
+...
+	# 如果所有batch_size之和超过样本量，则对数据进行shuffle并开始新一轮(epoch)遍历
+    start = self._index_in_epoch
+    self._index_in_epoch += batch_size
+    if self._index_in_epoch > self._num_examples:
+      # Finished epoch
+      self._epochs_completed += 1
+      # Shuffle the data
+      perm = numpy.arange(self._num_examples)
+      numpy.random.shuffle(perm)
+      self._images = self._images[perm]
+      self._labels = self._labels[perm]
+      # Start next epoch
+      start = 0
+      self._index_in_epoch = batch_size
+      assert batch_size <= self._num_examples
+    end = self._index_in_epoch
+    return self._images[start:end], self._labels[start:end]
+```
+
+
+
+
+
+
+
+### estimator
+
+#### Estimator
+
+tf.estimator.Estimator
+
+TF Estimator input is a dict, in case of multiple inputs
+
+
+
+#### EstimatorSpec
+
+tf.estimator.EstimatorSpec
+
+TF Estimators requires to return a EstimatorSpec, that specify the different ops for training, evaluating, predicting
+
+
+
+tf.estimator.ModeKeys.PREDICT
+
+
 
 
 
