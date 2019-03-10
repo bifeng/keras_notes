@@ -53,15 +53,11 @@ data/operations/...
 
 ## basic
 
-### variable
-
-tf.constant
-
-
+### placeholder
 
 tf.placeholder -> parameters: type, dimension, name
 
-```python
+~~~python
 def placeholder(dtype, shape=None, name=None):
   """Inserts a placeholder for a tensor that will be always fed.
 
@@ -78,8 +74,21 @@ def placeholder(dtype, shape=None, name=None):
 
     rand_array = np.random.rand(1024, 1024)
     print(sess.run(y, feed_dict={x: rand_array}))  # Will succeed.
-```
+~~~
+
+
+
+### variable
+
+When you train a model you use variables to hold and update parameters. Variables are in-memory buffers containing tensors.
+
+
+
 tf.Variable
+
+tf.constant
+
+
 
 
 
@@ -89,19 +98,17 @@ tf.random_normal
 
 
 
-tf.name_scope ?
+#### trainable_variables
+
+tf.trainable_variables
+
+https://stackoverflow.com/questions/37326002/is-it-possible-to-make-a-trainable-variable-not-trainable
+
+
 
 
 
 ### operation
-
-tf.trainable_variables
-
-
-
-tf.implicit_gradients
-
-
 
 
 
@@ -128,11 +135,17 @@ tf.argmax() - axis的用法与numpy.argmax()的axis用法一致
 
 
 
+#### Graph
+
+tf.get_default_graph
+
 
 
 
 
 #### Session
+
+A Session object encapsulates the environment in which Tensor objects are evaluated.
 
 tf.Session() ?
 
@@ -140,7 +153,9 @@ sess.run
 
 tf.get_default_session
 
-##### eval
+tf.InteractiveSession()
+
+##### eval (evaluation)
 
 https://stackoverflow.com/questions/33610685/in-tensorflow-what-is-the-difference-between-session-run-and-tensor-eval<br>https://stackoverflow.com/questions/38987466/eval-and-run-in-tensorflow
 
@@ -149,26 +164,27 @@ eval() 其实就是tf.Tensor的Session.run() 的另外一种写法。<br>eval() 
 ```python
 with tf.Session() as sess:
   print(accuracy.eval({x:mnist.test.images,y_: mnist.test.labels}))
-
-# 等价于
-
-with tf.Session() as sess:
+  # or
   print(sess.run(accuracy, {x:mnist.test.images,y_: mnist.test.labels}))
 ```
 
 
 
-#### Graph
-
-tf.get_default_graph
-
 
 
 #### Initialization
 
-tf.variables_initializer 
+tf.initialize_all_variables
 
 tf.global_variables_initializer
+
+tf.variables_initializer 
+
+
+
+tf.random_normal_initializer
+
+tf.constant_initializer
 
 
 
@@ -208,7 +224,7 @@ optimizer.minimize
 
   
 
-##### global_step
+###### global_step
 
 https://stackoverflow.com/questions/41166681/what-does-global-step-mean-in-tensorflow<br>https://blog.csdn.net/leviopku/article/details/78508951
 
@@ -583,27 +599,78 @@ class DataSet(object):
 
 
 
+### useful for debug
 
+#### get_operations 
 
-### estimator
-
-#### Estimator
-
-tf.estimator.Estimator
-
-TF Estimator input is a dict, in case of multiple inputs
+tf.get_default_graph().get_operations()
 
 
 
-#### EstimatorSpec
+#### name_scope
 
-tf.estimator.EstimatorSpec
-
-TF Estimators requires to return a EstimatorSpec, that specify the different ops for training, evaluating, predicting
+tf.name_scope
 
 
 
-tf.estimator.ModeKeys.PREDICT
+#### variable_scope
+
+tf.variable_scope() provides simple name-spacing to avoid clashes
+tf.get_variable() creates/accesses variables from within a variable scope
+
+```python
+with tf.variable_scope("foo"):
+	with tf.variable_scope("bar"):
+		v = tf.get_variable("v", [1])
+assert v.name == "foo/bar/v:0"
+```
+
+
+
+```python
+with tf.variable_scope("foo"):
+	v = tf.get_variable("v", [1])
+	tf.get_variable_scope().reuse_variables()
+	v1 = tf.get_variable("v", [1])
+assert v1 == v
+```
+
+
+
+```python
+with tf.variable_scope("foo"):
+	v = tf.get_variable("v", shape=[1]) # v.name == "foo/v:0"
+with tf.variable_scope("foo", reuse=True):
+	v1 = tf.get_variable("v") # Shared variable found!
+with tf.variable_scope("foo", reuse=False):
+	v1 = tf.get_variable("v") # CRASH foo/v:0 already exists!
+```
+
+
+
+#### get_variable
+
+Behavior depends on whether variable reuse enabled
+
+Case 1: reuse set to false
+○ Create and return new variable
+
+```python
+with tf.variable_scope("foo"):
+	v = tf.get_variable("v", [1])
+assert v.name == "foo/v:0"
+```
+
+Case 2: Variable reuse set to true
+○ Search for existing variable with given name. Raise ValueError if none found.
+
+```python
+with tf.variable_scope("foo"):
+	v = tf.get_variable("v", [1])
+with tf.variable_scope("foo", reuse=True):
+	v1 = tf.get_variable("v", [1])
+assert v1 == v
+```
 
 
 
@@ -653,11 +720,62 @@ https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/py
 
 tfe.enable_eager_execution
 
+## layers
+
+tf.layers.dense
+
+```python
+def dense(
+    inputs, units,
+    activation=None,
+    use_bias=True,
+    kernel_initializer=None,
+    bias_initializer=init_ops.zeros_initializer(),
+    kernel_regularizer=None,
+    bias_regularizer=None,
+    activity_regularizer=None,
+    kernel_constraint=None,
+    bias_constraint=None,
+    trainable=True,
+    name=None,
+    reuse=None):
+  """Functional interface for the densely-connected layer.
+
+  This layer implements the operation:
+  `outputs = activation(inputs * kernel + bias)`
+  where `activation` is the activation function passed as the `activation` argument (if not `None`), `kernel` is a weights matrix created by the layer, and `bias` is a bias vector created by the layer (only if `use_bias` is `True`).
+
+  Arguments:
+    activation: Activation function (callable). Set it to None to maintain a linear activation.
+```
+
 
 
 ## estimator
 
-### tf.contrib.estimator.multi_head
+### Estimator
+
+tf.estimator.Estimator
+
+TF Estimator input is a dict, in case of multiple inputs
+
+
+
+### EstimatorSpec
+
+tf.estimator.EstimatorSpec
+
+TF Estimators requires to return a EstimatorSpec, that specify the different ops for training, evaluating, predicting
+
+
+
+tf.estimator.ModeKeys.PREDICT
+
+
+
+### multi_head
+
+tf.contrib.estimator.multi_head
 
 https://www.tensorflow.org/api_docs/python/tf/contrib/estimator/multi_head
 
@@ -666,6 +784,10 @@ multi-objective learning
 
 
 ## other
+
+### tf.implicit_gradients
+
+
 
 ### tf.stop_gradient
 
