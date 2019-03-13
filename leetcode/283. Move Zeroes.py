@@ -2,8 +2,10 @@
 https://leetcode.com/problems/move-zeroes/
 https://leetcode.com/problems/move-zeroes/solution/
 
-todo
-traverse + swap
+1. traverse + swap
+记录第一个0的位置，每次将非0数字与第一个0交换数值。在交换时，记录第一个0的位置向前移动1位
+2.
+
 '''
 
 
@@ -40,6 +42,22 @@ class Solution:
             if nums[i] != 0:
                 nums[i], nums[zero] = nums[zero], nums[i]
                 zero += 1
+
+
+# second method
+# Runtime 48ms
+class Solution:
+    def moveZeroes(self, nums: List[int]) -> None:
+        """
+        Do not return anything, modify nums in-place instead.
+        """
+        zeroindex = 0
+        for i,v in enumerate(nums):
+            if v != 0:
+                nums[zeroindex] = nums[i]
+                zeroindex += 1
+        for i in range(zeroindex,len(nums)):
+            nums[i] = 0
 
 
 ts = Solution()

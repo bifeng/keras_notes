@@ -20,7 +20,7 @@ data/operations/...
 
 ### model building step
 
-#### session -based
+#### session-based
 
 1. 输入输出、权重
 2. 模型（网络结构）
@@ -47,7 +47,9 @@ data/operations/...
 
 3. input_fn（input_fn = tf.estimator.inputs.numpy_input_fn）
 
-4. 训练（model.train(input_fn））
+4. 训练（model.train(input_fn)）
+
+5. 评估（model.evaluate(input_fn)）
 
 
 
@@ -137,9 +139,22 @@ tf.argmax() - axis的用法与numpy.argmax()的axis用法一致
 
 #### Graph
 
-tf.get_default_graph
+refer: CS20si
 
+tf.get_default_graph()   # default graph
 
+tf.Graph()  # user created graph
+
+```python
+g1 = tf.get_default_graph()
+g2 = tf.Graph()
+# add ops to the default graph
+with g1.as_default():
+	a = tf.Constant(3)
+# add ops to the user created graph
+with g2.as_default():
+	b = tf.Constant(5)
+```
 
 
 
@@ -227,6 +242,8 @@ optimizer.minimize
 ###### global_step
 
 https://stackoverflow.com/questions/41166681/what-does-global-step-mean-in-tensorflow<br>https://blog.csdn.net/leviopku/article/details/78508951
+
+TensorFlow uses the `global_step` parameter to count the number of training steps that have been processed (to know when to end a training run). Furthermore, the `global_step` is essential for TensorBoard graphs to work correctly.
 
 `global_step` refers to the number of batches seen by the graph. Every time a batch is provided, the weights are updated in the direction that minimizes the loss. `global_step` just keeps track of the number of batches seen so far. When it is passed in the `minimize()` argument list, the variable is increased by one. 
 
@@ -720,6 +737,32 @@ https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/py
 
 tfe.enable_eager_execution
 
+
+
+### gradients
+
+There are 4 ways to automatically compute gradients when eager execution is enabled (actually, they also work in graph mode)... 
+
+https://stackoverflow.com/questions/50098971/whats-the-difference-between-gradienttape-implicit-gradients
+
+
+
+#### tf.implicit_gradients
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/eager/implicit_gradients
+
+
+
+
+
+## feature_column
+
+tf.feature_column.input_layer
+
+
+
+
+
 ## layers
 
 tf.layers.dense
@@ -784,10 +827,6 @@ multi-objective learning
 
 
 ## other
-
-### tf.implicit_gradients
-
-
 
 ### tf.stop_gradient
 
