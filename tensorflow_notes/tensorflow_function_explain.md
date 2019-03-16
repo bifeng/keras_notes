@@ -78,6 +78,17 @@ def placeholder(dtype, shape=None, name=None):
     print(sess.run(y, feed_dict={x: rand_array}))  # Will succeed.
 ~~~
 
+**You can feed_dict any feedable tensor. Placeholder is just a way to indicate that something must be fed**
+
+```python
+tf.Graph.is_feedable(tensor) 
+# True if and only if tensor is feedable.
+```
+
+
+
+
+
 
 
 ### variable
