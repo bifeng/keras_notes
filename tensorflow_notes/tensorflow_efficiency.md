@@ -90,5 +90,35 @@ print(sess.run(c))
 
 
 
+#### 限制显存
+
+method 1 预先分配（每个GPU占用百分比）
+
+```python
+sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.333)))
+```
+
+
+
+method 2 动态分配
+
+```python
+sess = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -124,7 +124,7 @@ print(tf.get_default_graph().as_graph_def())
 
 
 
-A variable is stored separately, and may <u>live on a parameter server</u>.
+A variable is stored separately, and may <u>live on a parameter server</u> (Sessions allocate memory to store variable values).
 
 
 
