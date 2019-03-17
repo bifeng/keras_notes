@@ -111,7 +111,13 @@ tf.random_normal
 
 
 
-#### trainable_variables
+#### trainable
+
+Specify if a variable should be trained or not. By default, all variables are trainable. Session looks at all trainable variables that loss depends on and update them.
+
+For example, global_steps shouldn’t be trainable. Or in double q-learning, you want to alternate which q-value functions to update.
+
+
 
 tf.trainable_variables
 
@@ -296,6 +302,13 @@ with tf.Session() as sess:
         print(sess.run(global_steps))
 ```
 
+```python
+global_step = tf.Variable(0, trainable=False, dtype=tf.int32)
+learning_rate = 0.01 * 0.99 ** tf.cast(global_step, tf.float32)
+increment_step = global_step.assign_add(1)
+optimizer = tf.train.GradientDescentOptimizer(learning_rate) # learning rate can be a tensor
+```
+
 tf.train.get_global_step
 
 ```python
@@ -390,6 +403,30 @@ def clip_by_global_norm(t_list, clip_norm, use_norm=None, name=None):
 + 梯度裁剪可能产生的问题？
 
   不收敛？迭代时间长？
+
+#### gradient
+
+##### gradient
+
+tf.gradient
+
+This is especially useful when training only parts of a model. For example, we can use tf.gradients()  to take the derivative G of the loss w.r.t. to the middle layer. Then we use an optimizer to minimize the difference between the middle layer output M and M + G. This only updates the lower half of the network.
+
+
+
+
+
+##### stop gradient
+
+tf.stop_gradient
+
+https://www.tensorflow.org/api_docs/python/tf/stop_gradient
+
+This is useful any time you want to compute a value with TensorFlow but need to pretend that the value was a constant ( freeze certain variables during training). Some examples include:
+
+- The *EM* algorithm where the *M-step* should not involve backpropagation through the output of the *E-step*.
+- Contrastive divergence training of Boltzmann machines where, when differentiating the energy function, the training must not backpropagate through the graph that generated the samples from the model.
+- Adversarial training (GAN (Generative Adversarial Network)), where no backprop should happen through the adversarial example generation process.
 
 
 
@@ -704,6 +741,8 @@ assert v1 == v
 
 
 
+
+
 ## tensorboard
 
 https://github.com/tensorflow/tensorboard
@@ -738,15 +777,43 @@ https://github.com/tensorflow/tensorflow/tree/master/tensorflow/python/debug
 
 ## Eager
 
+https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/python/g3doc/guide.md
+
 motivation: Eager execution is an imperative, define-by-run interface where operations are executed immediately as they are called from Python.
 
+You no longer need to worry about ...
+
+1. placeholders
+2. sessions
+3. control dependencies
+4. "lazy loading"
+5. {name, variable, op} scopes
 
 
-https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/eager/python/g3doc/guide.md
+
+when eager execution is enabled  …
+
+- - prefer **tfe**.Variable under eager execution (compatible with graph construction)
+
+  - manage your own variable storage — variable collections are not supported!
+
+  - use tf.contrib.summary
+
+  - use **tfe**.Iterator to iterate over datasets under eager execution
+
+  - prefer object-oriented layers (e.g., tf.layers.Dense) 
+
+  - - functional layers (e.g., tf.layers.dense) only work if wrapped in **tfe**.make_template
+
+- + prefer tfe.py_func over tf.py_func
 
 
 
 tfe.enable_eager_execution
+
+
+
+tfe.Variable
 
 
 
@@ -755,6 +822,13 @@ tfe.enable_eager_execution
 There are 4 ways to automatically compute gradients when eager execution is enabled (actually, they also work in graph mode)... 
 
 https://stackoverflow.com/questions/50098971/whats-the-difference-between-gradienttape-implicit-gradients
+
+
+
+tfe.gradients_function()
+tfe.value_and_gradients_function()
+tfe.implicit_gradients()
+tfe.implicit_value_and_gradients()
 
 
 
@@ -834,20 +908,6 @@ tf.contrib.estimator.multi_head
 https://www.tensorflow.org/api_docs/python/tf/contrib/estimator/multi_head
 
 multi-objective learning
-
-
-
-## other
-
-### tf.stop_gradient
-
-https://www.tensorflow.org/api_docs/python/tf/stop_gradient
-
-This is useful any time you want to compute a value with TensorFlow but need to pretend that the value was a constant. Some examples include:
-
-- The *EM* algorithm where the *M-step* should not involve backpropagation through the output of the *E-step*.
-- Contrastive divergence training of Boltzmann machines where, when differentiating the energy function, the training must not backpropagate through the graph that generated the samples from the model.
-- Adversarial training, where no backprop should happen through the adversarial example generation process.
 
 
 

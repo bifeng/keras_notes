@@ -13,7 +13,8 @@ import numpy as np
 import tensorflow as tf
 import time
 
-import utils
+# import utils
+from tensorflow_examples.stanford_tensorflow_tutorials.examples import utils
 
 # Define paramaters for the model
 learning_rate = 0.01
@@ -23,8 +24,9 @@ n_train = 60000
 n_test = 10000
 
 # Step 1: Read in data
-mnist_folder = 'data/mnist'
-utils.download_mnist(mnist_folder)
+path = 'C:/Users/kiss/deep_coding_notes/tensorflow_examples/'
+mnist_folder = path + 'tmp/mnist'
+# utils.download_mnist(mnist_folder)
 train, val, test = utils.read_mnist(mnist_folder, flatten=True)
 
 # Step 2: Create datasets and iterator

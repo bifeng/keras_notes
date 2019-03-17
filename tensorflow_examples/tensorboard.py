@@ -13,5 +13,6 @@ writer.close()
 ''' Check in tensorboard:
 tensorboard --logdir="./graph" --port 6006      # 6006 or any port you want
 
+注意 - "./graph" 路径两边是双引号
 '''
 

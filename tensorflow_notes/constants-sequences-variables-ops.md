@@ -111,6 +111,20 @@ with tf.Session() as sess:
 
 
 
+##### Control flow operations
+
+|                  |                                                              |
+| ---------------- | ------------------------------------------------------------ |
+| Control Flow Ops | tf.group, tf.count_up_to, tf.cond, tf.case, tf.while_loop,... |
+| Comparison Ops   | tf.equal, tf.not_equal, tf.less, tf.greater, tf.where,...    |
+| Logical Ops      | tf.logical_and, tf.logical_not, tf.logical_or, tf.logical_xor |
+| Debugging Ops    | tf.is_finite, tf.is_inf, tf.is_nan, tf.Assert, tf.Print,...  |
+|                  |                                                              |
+|                  |                                                              |
+|                  |                                                              |
+
+
+
 #### variables
 
 A constant's value is stored in the graph and replicated wherever the graph is loaded. <u>Constants are stored in the graph definition</u>. When constants are memory expensive, such as a weight matrix with millions of entries, it will be slow each time you have to load the graph. To see what’s stored in the graph's definition, simply print out the graph's protobuf.
