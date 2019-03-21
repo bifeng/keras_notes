@@ -78,30 +78,62 @@ def placeholder(dtype, shape=None, name=None):
     print(sess.run(y, feed_dict={x: rand_array}))  # Will succeed.
 ~~~
 
-**You can feed_dict any feedable tensor. Placeholder is just a way to indicate that something must be fed**
-
-```python
-tf.Graph.is_feedable(tensor) 
-# True if and only if tensor is feedable.
-```
-
-
-
-
-
 
 
 ### variable
 
 When you train a model you use variables to hold and update parameters. Variables are in-memory buffers containing tensors.
 
-
-
 tf.Variable
 
+```python
+  def __init__(self,  # pylint: disable=super-init-not-called
+               initial_value=None,
+               trainable=True,
+               collections=None,
+               validate_shape=True,
+               caching_device=None,
+               name=None,
+               variable_def=None,
+               dtype=None,
+               expected_shape=None,
+               import_scope=None,
+               constraint=None,
+               use_resource=None,
+               synchronization=VariableSynchronization.AUTO,
+               aggregation=VariableAggregation.NONE):
+    """Creates a new variable with value `initial_value`.
+
+    The new variable is added to the graph collections listed in `collections`,
+    which defaults to `[GraphKeys.GLOBAL_VARIABLES]`.
+
+    If `trainable` is `True` the variable is also added to the graph collection
+    `GraphKeys.TRAINABLE_VARIABLES`.
+
+    This constructor creates both a `variable` Op and an `assign` Op to set the
+    variable to its initial value.
+
+    Args:
+      trainable: If `True`, the default, also adds the variable to the graph
+        collection `GraphKeys.TRAINABLE_VARIABLES`. This collection is used as
+        the default list of variables to use by the `Optimizer` classes.
+      collections: List of graph collections keys. The new variable is added to
+        these collections. Defaults to `[GraphKeys.GLOBAL_VARIABLES]`.
+```
+
+默认创建全局变量，该变量在tf.GraphKeys.GLOBAL_VARIABLES之中。局部变量则在tf.GraphKeys.LOCAL_VARIABLES之中：
+
+```python
+z = tf.Variable(initial_value=tf.constant(1.0), name='z', collections=[tf.GraphKeys.LOCAL_VARIABLES])
+```
+
+局部变量的应用场景：<br>	在使用saver的时候，局部变量不存于模型文件
+
+
+
+
+
 tf.constant
-
-
 
 
 
@@ -156,22 +188,59 @@ tf.argmax() - axis的用法与numpy.argmax()的axis用法一致
 
 #### Graph
 
-refer: CS20si
-
 tf.get_default_graph()   # default graph
 
 tf.Graph()  # user created graph
 
+
+
+##### graph finalize (memory leak)
+
+more: https://dantkz.github.io/How-To-Debug-A-Memory-Leak-In-TensorFlow/
+
+tf.Graph.finalize()
+
 ```python
-g1 = tf.get_default_graph()
-g2 = tf.Graph()
-# add ops to the default graph
-with g1.as_default():
-	a = tf.Constant(3)
-# add ops to the user created graph
-with g2.as_default():
-	b = tf.Constant(5)
+  def finalize(self):
+    """Finalizes this graph, making it read-only.
+
+    After calling `g.finalize()`, no new operations can be added to
+    `g`.  This method is used to ensure that no operations are added
+    to a graph when it is shared between multiple threads, for example
+    when using a `tf.train.QueueRunner`.
+    """
 ```
+
+
+
+##### control dependencies
+
+tf.Graph.control_dependencies(control_inputs)
+
+Used it to declare the control dependencies. For example, a variable can only be used after being initialized. 
+
+```python
+# defines which ops should be run first
+# your graph g have 5 ops: a, b, c, d, e
+g = tf.get_default_graph()
+with g.control_dependencies([a, b, c]):
+	# 'd' and 'e' will only run after 'a', 'b', and 'c' have executed.
+	d = ...
+	e = …
+```
+
+
+
+##### feedable tensor
+
+**You can feed_dict any feedable tensor. Placeholder is just a way to indicate that something must be fed**
+
+```python
+tf.Graph.is_feedable(tensor) 
+# True if and only if tensor is feedable.
+```
+
+
 
 
 
@@ -206,9 +275,11 @@ with tf.Session() as sess:
 
 #### Initialization
 
-tf.initialize_all_variables
-
 tf.global_variables_initializer
+
+tf.initialize_local_variables
+
+
 
 tf.variables_initializer 
 
@@ -242,9 +313,9 @@ optimizer.minimize
     """
 ```
 
-`minimize()`分为两个步骤：`compute_gradients`和`apply_gradients`，前者用于计算梯度，后者用于使用计算得到的梯度来更新对应的variable。拆分为两个步骤后，在某些情况下我们就可以对梯度做一定的修正，例如为了防止梯度消失(gradient vanishing)或者梯度爆炸(gradient explosion)。
+`minimize()`分为两个步骤：`compute_gradients`和`appy_gradients`，前者用于计算梯度，后者用于使用计算得到的梯度来更新对应的variable。拆分为两个步骤后，在某些情况下我们就可以对梯度做一定的修正，例如为了防止梯度消失(gradient vanishing)或者梯度爆炸(gradient explosion)。
 
-`compute_gradients`和`apply_gradients`具体怎么实现的呢？请看源码 todo
+`compute_gradients`和`appy_gradients`具体怎么实现的呢？请看源码 todo
 
 + compute gradients
 
@@ -327,11 +398,33 @@ tf.train.get_or_create_global_step
 
 ```
 
+##### gradient
 
+###### gradient
 
+tf.gradients
 
+This is especially useful when training only parts of a model. For example, we can use tf.gradients()  to take the derivative G of the loss w.r.t. to the middle layer. Then we use an optimizer to minimize the difference between the middle layer output M and M + G. This only updates the lower half of the network.
 
-##### clip by * (gradient)
+```python
+tf.gradients(ys, xs, grad_ys=None, name='gradients', colocate_gradients_with_ops=False, gate_gradients=False, aggregation_method=None)
+```
+
+tf.gradients(ys, [xs]) with [xs] stands for a list of tensors with respect to those you’re trying to compute the gradient of ys. 
+
+###### stop gradient
+
+tf.stop_gradient
+
+https://www.tensorflow.org/api_docs/python/tf/stop_gradient
+
+This is useful any time you want to compute a value with TensorFlow but need to pretend that the value was a constant ( freeze certain variables during training). Some examples include:
+
+- The *EM* algorithm where the *M-step* should not involve backpropagation through the output of the *E-step*.
+- Contrastive divergence training of Boltzmann machines where, when differentiating the energy function, the training must not backpropagate through the graph that generated the samples from the model.
+- Adversarial training (GAN (Generative Adversarial Network)), where no backprop should happen through the adversarial example generation process.
+
+###### clip by * (gradient)
 
 ```python
 def clip_by_value(t, clip_value_min, clip_value_max,
@@ -386,47 +479,19 @@ def clip_by_global_norm(t_list, clip_norm, use_norm=None, name=None):
   However, it is slower than `clip_by_norm()` because all the parameters must be ready before the clipping operation can be performed.
 ```
 
+###### question
 
+- 梯度裁剪的应用场景？
 
-
-
-##### question
-
-+ 梯度裁剪的应用场景？
-
-+ 怎么保证梯度裁剪的合理性？（数学或直观）
+- 怎么保证梯度裁剪的合理性？（数学或直观）
 
   梯度裁剪，实际上是剔除了噪声样本？
 
   分析被裁剪过的样本 todo
 
-+ 梯度裁剪可能产生的问题？
+- 梯度裁剪可能产生的问题？
 
   不收敛？迭代时间长？
-
-#### gradient
-
-##### gradient
-
-tf.gradient
-
-This is especially useful when training only parts of a model. For example, we can use tf.gradients()  to take the derivative G of the loss w.r.t. to the middle layer. Then we use an optimizer to minimize the difference between the middle layer output M and M + G. This only updates the lower half of the network.
-
-
-
-
-
-##### stop gradient
-
-tf.stop_gradient
-
-https://www.tensorflow.org/api_docs/python/tf/stop_gradient
-
-This is useful any time you want to compute a value with TensorFlow but need to pretend that the value was a constant ( freeze certain variables during training). Some examples include:
-
-- The *EM* algorithm where the *M-step* should not involve backpropagation through the output of the *E-step*.
-- Contrastive divergence training of Boltzmann machines where, when differentiating the energy function, the training must not backpropagate through the graph that generated the samples from the model.
-- Adversarial training (GAN (Generative Adversarial Network)), where no backprop should happen through the adversarial example generation process.
 
 
 
@@ -664,7 +729,7 @@ class DataSet(object):
 
 
 
-### useful for debug
+### useful functions
 
 #### get_operations 
 
@@ -674,11 +739,13 @@ tf.get_default_graph().get_operations()
 
 #### name_scope
 
-tf.name_scope
+**Group nodes together** **with tf.name_scope(name)**
 
 
 
 #### variable_scope
+
+Variable scope facilitates variable sharing.
 
 tf.variable_scope() provides simple name-spacing to avoid clashes
 tf.get_variable() creates/accesses variables from within a variable scope
@@ -715,6 +782,10 @@ with tf.variable_scope("foo", reuse=False):
 
 #### get_variable
 
+tf.get_variable(<name>, <shape>, <initializer>)
+
+If a variable with <name> already exists, reuse it; If not, initialize it with <shape> using <initializer>.
+
 Behavior depends on whether variable reuse enabled
 
 Case 1: reuse set to false
@@ -739,31 +810,23 @@ assert v1 == v
 
 
 
+#### get_collection (GraphKeys)
 
+By default, all variables are placed in tf.GraphKeys.GLOBAL_VARIABLES. 
 
+If you set trainable=True (which is always set by default) when you create your variable, that variable will be in the collection tf.GraphKeys.TRAINABLE_VARIABLES. 
 
-
-## tensorboard
-
-https://github.com/tensorflow/tensorboard
-
-
-
-motivation: visualization metrics and graph, Weights, Gradients and Activations 
-
-
-
-step1 encapsulating all ops into scopes (tf.name_scope) and create a summary to monitor metrics (tf.summary)
-
-step2 write logs to Tensorboard (tf.summary.FileWriter)
-
-step3 run the following command, then open http://0.0.0.0:6006/ into your web browser
-
-```bash
-tensorboard --logdir=/tmp/tensorflow_logs 
+```python
+tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='my_scope')
 ```
 
+You can create your own collections with tf.add_to_collection(name, value). For example, you can create a collection of initializers and  add all init ops to that. 
 
+The standard library uses various well-known names to collect and retrieve values associated with a graph. For example, the tf.train.Optimizer subclasses default to optimizing the variables collected under tf.GraphKeys.TRAINABLE_VARIABLES if none is specified, but it is also possible to pass an explicit list of variables. For the list of predefined graph keys, please see [the official documentation](https://www.tensorflow.org/api_docs/python/tf/GraphKeys).
+
+
+
+## 
 
 ## Debugger
 
@@ -908,6 +971,125 @@ tf.contrib.estimator.multi_head
 https://www.tensorflow.org/api_docs/python/tf/contrib/estimator/multi_head
 
 multi-objective learning
+
+
+
+## model managment
+
+### save/restore
+
+**Saves sessions, not graphs!**
+
+A good practice is to periodically save the model’s parameters after a certain number of steps or epochs so that we can restore/retrain our model from that step if need be. 
+
+```python
+# define model
+
+# ceate global_step, initialize it to 0 and set it to be not trainable
+global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
+
+# pass global_step as a parameter to the optimizer so it knows to increment global_step by one with each training step. This can also help your optimizer know when to decay learning rate.
+optimizer = tf.train.GradientDescentOptimizer(lr).minimize(loss,global_step=global_step)
+
+# create a saver object
+saver = tf.train.Saver()
+
+# launch a session to execute the computation
+with tf.Session() as sess:
+    
+    # if a checkpoint exists, restore from the latest checkpoint
+    ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/checkpoint'))
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+    # actual training loop
+    for step in range(training_steps): 
+	sess.run([optimizer])
+	if (step + 1) % 1000 == 0:
+        # it’s helpful to append the number of training steps our model has gone 
+	   saver.save(sess, 'checkpoint_directory/model_name', global_step=global_step)
+   	
+```
+
+### summary (tensorboard)
+
+https://github.com/tensorflow/tensorboard
+
+motivation: visualization metrics and graph, Weights, Gradients and Activations 
+
+
+
+Step 1 create summaries - encapsulating all ops into scopes (tf.name_scope) and create a summary to monitor metrics (tf.summary) 
+
+Step 2 run them
+
+Step 3 write summaries to file  (tf.summary.FileWriter)
+
+step 4 run the following command, then open http://0.0.0.0:6006/ into your web browser
+
+```bash
+tensorboard --logdir=/tmp/tensorflow_logs 
+```
+
+
+
+```python
+# Step 1 create summaries
+with tf.name_scope("summaries"):
+    tf.summary.scalar("loss", self.loss)
+    tf.summary.scalar("accuracy", self.accuracy)            
+    tf.summary.histogram("histogram loss", self.loss)
+    # because you have several summaries, we should merge them all
+    # into one op to make it easier to manage
+    summary_op = tf.summary.merge_all()
+
+saver = tf.train.Saver() # defaults to saving all variables
+
+with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
+    ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/checkpoint'))
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+    writer = tf.summary.FileWriter('./graphs', sess.graph)
+    for index in range(10000):
+        ...
+        # Step 2 run them
+        loss_batch, _, summary = sess.run([loss, optimizer, summary_op])
+        # Step 3 write summaries to file
+        # Need global step here so the model knows what summary corresponds to what step
+        writer.add_summary(summary, global_step=index)
+
+        if (index + 1) % 1000 == 0:
+            saver.save(sess, 'checkpoints/skip-gram', index)
+
+```
+
+
+
+tf.summary.scalar
+
+tf.summary.histogram
+
+tf.summary.image
+
+
+
+### control randomization
+
+1. Set random seed at operation level. All random tensors allow you to pass in seed value in their initialization.
+
+   ```python
+   my_var = tf.Variable(tf.truncated_normal((-1.0,1.0), stddev=0.1, seed=0))
+   ```
+
+2. Set random seed at graph level with tf.Graph.seed
+
+   ```python
+   tf.set_random_seed(seed)
+   ```
+
+3. ...
 
 
 

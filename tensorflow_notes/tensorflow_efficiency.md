@@ -4,6 +4,8 @@ refer: CS20si
 
 #### Avoid lazy loading
 
+more: https://www.zhihu.com/question/58577743
+
 ```python
 # Normal loading
 # Node “Add” added once to the graph definition

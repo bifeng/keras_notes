@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 '''
+compute_gradients/apply_gradients
 modify the gradients calculated by your optimizer
 '''
 # create an optimizer.
@@ -18,23 +19,24 @@ optimizer.apply_gradients(subtracted_grads_and_vars)
 
 
 '''
+tf.stop_gradient
 prevent certain tensors from contributing to the calculation of  the derivatives with respect to a specific loss
 '''
 tf.stop_gradient( input, name=None )
 
 
 '''
+tf.gradients
 explicitly ask TensorFlow to calculate certain gradients
 '''
+x = tf.Variable(2.0)
+y = 2.0 * (x ** 3)
+z = 3.0 + y ** 2
 
-tf.gradients(
-    ys,
-    xs,
-    grad_ys=None,
-    name='gradients',
-    colocate_gradients_with_ops=False,
-    gate_gradients=False,
-    aggregation_method=None,
-    stop_gradients=None
-)
+grad_z = tf.gradients(z, [x, y])
+with tf.Session() as sess:
+	sess.run(x.initializer)
+	print(sess.run(grad_z)) # >> [768.0, 32.0]
+# 768 is the gradient of z with respect to x, 32 with respect to y
+
 
