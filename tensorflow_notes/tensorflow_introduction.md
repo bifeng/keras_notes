@@ -1,4 +1,14 @@
-refer: CS224n, CS20si
+refer: CS224n, CS20si, CS231n
+
+
+
+Why need GPU?
+
+1) more cores for parallel tasks; 
+
+2) memory; 
+
+3) 
 
 
 

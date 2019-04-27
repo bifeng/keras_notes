@@ -21,14 +21,6 @@ from __future__ import print_function
 import re
 import tensorflow as tf
 
-"""
-Summary:
-1, custom optimizer
-2, linear decay of learning rate
-3, linear warmup learning rate
-4, It is recommended that you use AdamWeightDecayOptimizer for fine tuning
-"""
-
 
 def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   """Creates an optimizer training op."""
@@ -47,7 +39,6 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
 
   # Implements linear warmup. I.e., if global_step < num_warmup_steps, the
   # learning rate will be `global_step/num_warmup_steps * init_lr`.
-  # todo why use warmup?
   if num_warmup_steps:
     global_steps_int = tf.cast(global_step, tf.int32)
     warmup_steps_int = tf.constant(num_warmup_steps, dtype=tf.int32)
@@ -73,7 +64,6 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
       epsilon=1e-6,
       exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"])
 
-  """which uses an allreduce to aggregate gradients and broadcast the result to each shard (each TPU core)."""
   if use_tpu:
     optimizer = tf.contrib.tpu.CrossShardOptimizer(optimizer)
 
@@ -81,15 +71,11 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
   grads = tf.gradients(loss, tvars)
 
   # This is how the model was pre-trained.
-  # todo why using the global norm to clip the each gradient? (the variables are so difference between each other)
   (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
 
   train_op = optimizer.apply_gradients(
       zip(grads, tvars), global_step=global_step)
 
-  # Normally the global step update is done inside of `apply_gradients`.
-  # However, `AdamWeightDecayOptimizer` doesn't do this. But if you use
-  # a different optimizer, you should probably take this line out.
   new_global_step = global_step + 1
   train_op = tf.group(train_op, [global_step.assign(new_global_step)])
   return train_op
@@ -97,8 +83,7 @@ def create_optimizer(loss, init_lr, num_train_steps, num_warmup_steps, use_tpu):
 
 class AdamWeightDecayOptimizer(tf.train.Optimizer):
   """A basic Adam optimizer that includes "correct" L2 weight decay."""
-  # todo why use the weight decay of adam?
-  # todo practice adam
+
   def __init__(self,
                learning_rate,
                weight_decay_rate=0.0,

@@ -1,5 +1,6 @@
 refer:
 [BERT中文实战踩坑](https://zhuanlan.zhihu.com/p/51762599)
+http://fancyerii.github.io/2019/03/09/bert-codes/
 
 
 code:
@@ -7,9 +8,26 @@ https://github.com/google-research/bert
 
 
 ### Annotated code
+modeling.py
+optimization.py
+run_pretraining.py
+
+tokenization.py
+create_pretraining_data.py
+
+extract_features.py
+
 run_classifier.py
 
 notes:对于training, 会进行shuffling.
+
+
+### pretraining
+create_pretraining_data.py
+run_pretraining.py
+当前数据是否符合训练数据的特点
+参数：
+init_checkpoint - 在预训练模型上pretraining
 
 
 ### fine tuning
@@ -17,18 +35,33 @@ run_classifier.py
 Step1：自定义processor
 Step2：main函数新增processor
 
+参数：
+train_batch_size - 调整batch size，避免OOM （bert-base 8G显存 batch size=8）
+num_train_epochs - 根据任务调整
+
 
 ### feature based
 extract_features.py
 
 
+### application
+1-two step  
+a. pretraining on domain dataset (large unlabel dataset)  
+b. fine tuning or feature based with minimal task-specific architectures on supervised domain dataset (small label dataset)  
+case: SciBERT
+
 
 ### QA
+1, how to Getting ELMo-like contextual word embedding
+https://github.com/hanxiao/bert-as-service#getting-elmo-like-contextual-word-embedding
+
 1, oom
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 2, TPU - GPU
-源码采用的estimator是tf.contrib.tpu.TPUEstimator，虽然TPU的estimator同样可以在gpu和cpu上运行，但若想在gpu上更高效地做一些提升，可以考虑将其换成tf.estimator.Estimator, 同时model_fn里一些tf.contrib.tpu.TPUEstimatorSpec也需要修改成tf.estimator.EstimatorSpec的形式，以及相关调用参数也需要做一些调整。
+tf.contrib.tpu.TPUEstimator -> tf.estimator.Estimator  
+model_fn - tf.contrib.tpu.TPUEstimatorSpec -> tf.estimator.EstimatorSpec
+相关调用参数也需要做一些调整
 3, early stopping
 ```python
 early_stopping_hook = tf.contrib.estimator.stop_if_no_decrease_hook(

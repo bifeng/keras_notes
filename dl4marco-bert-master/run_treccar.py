@@ -157,7 +157,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
     loss = tf.reduce_mean(per_example_loss)
 
-    return (loss, per_example_loss, logits)
+    return (loss, per_example_loss, log_probs)
 
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
@@ -179,7 +179,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
     len_gt_titles = features["len_gt_titles"]
 
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
-    (total_loss, per_example_loss, logits) = create_model(
+    (total_loss, per_example_loss, log_probs) = create_model(
         bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
         num_labels, use_one_hot_embeddings)
 
@@ -223,7 +223,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
       output_spec = tf.contrib.tpu.TPUEstimatorSpec(
           mode=mode,
           predictions={
-              "logits": logits,
+              "log_probs": log_probs,
               "label_ids": label_ids,
               "len_gt_titles": len_gt_titles,
           },
@@ -241,10 +241,17 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 def input_fn_builder(dataset_path, seq_length, is_training,
                      max_eval_examples=None):
   """Creates an `input_fn` closure to be passed to TPUEstimator."""
+  """
+  
+  """
 
   def input_fn(params):
     """The actual input function."""
-
+    """
+    batch_size - 
+    10 num_eval_docs
+    1000 num_test_docs
+    """
     batch_size = params["batch_size"]
     output_buffer_size = batch_size * 1000
 
@@ -318,7 +325,7 @@ def input_fn_builder(dataset_path, seq_length, is_training,
 
 def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
-  
+
   if not FLAGS.do_train and not FLAGS.do_eval:
     raise ValueError("At least one of `FLAGS.do_train` or `FLAGS.do_eval` must be True.")
 
@@ -382,19 +389,19 @@ def main(_):
       tf.logging.info("***** Running evaluation on the {} set*****".format(
           set_name))
       tf.logging.info("  Batch size = %d", FLAGS.eval_batch_size)
-      
+
       max_eval_examples = None
-      
+
       if set_name == "dev":
         num_eval_docs = FLAGS.num_dev_docs
         if FLAGS.max_dev_examples:
           max_eval_examples = FLAGS.max_dev_examples * FLAGS.num_dev_docs
-          
+
       elif set_name == "test":
         num_eval_docs = FLAGS.num_test_docs
         if FLAGS.max_test_examples:
           max_eval_examples = FLAGS.max_test_examples * FLAGS.num_test_docs
-          
+
       eval_input_fn = input_fn_builder(
           dataset_path=os.path.join(FLAGS.data_dir, "dataset_" + set_name + ".tf"),
           seq_length=FLAGS.max_seq_length,
@@ -411,7 +418,7 @@ def main(_):
             os.path.join(FLAGS.data_dir, set_name + ".run")) as ref_file:
           for line in ref_file:
             query, _, doc_id, _, _, _ = line.strip().split(" ")
-            
+
             # We add fake docs so the number of docs per query is always
             # num_eval_docs.
             if len(query_docids_map) > 0:
@@ -425,15 +432,15 @@ def main(_):
             query_docids_map.append((query, doc_id))
             last_query = query
             docs_per_query += 1
-            
+
       # ***IMPORTANT NOTE***
-      # The logging output produced by the feed queues during evaluation is very 
+      # The logging output produced by the feed queues during evaluation is very
       # large (~14M lines for the dev set), which causes the tab to crash if you
-      # don't have enough memory on your local machine. We suppress this 
+      # don't have enough memory on your local machine. We suppress this
       # frequent logging by setting the verbosity to WARN during the evaluation
       # phase.
       tf.logging.set_verbosity(tf.logging.WARN)
-      
+
       result = estimator.predict(input_fn=eval_input_fn,
                                  yield_single_examples=True)
       start_time = time.time()
@@ -442,31 +449,34 @@ def main(_):
       example_idx = 0
       total_count = 0
       for item in result:
+        # todo one item in result is corresponding to one query ?
+        # todo how to inspect the result ?
+        # results is a temporary variable
         results.append(
-            (item["logits"], item["label_ids"], item["len_gt_titles"]))
+            (item["log_probs"], item["label_ids"], item["len_gt_titles"]))
 
         if len(results) == num_eval_docs:
 
-          logits, labels, len_gt_titles = zip(*results)
-          logits = np.stack(logits).reshape(-1, 2)
+          log_probs, labels, len_gt_titles = zip(*results)
+          log_probs = np.stack(log_probs).reshape(-1, 2)
           labels = np.stack(labels)
           len_gt_titles = np.stack(len_gt_titles)
           assert len(set(list(len_gt_titles))) == 1, (
-              "all ground truth lengths must be the same for a given query.")   
-          
-          scores = logits[:, 1]
-          pred_docs = scores.argsort()[::-1]
-          
-          gt = set(list(np.where(labels > 0)[0]))
+              "all ground truth lengths must be the same for a given query.")
+
+          scores = log_probs[:, 1]
+          pred_docs = scores.argsort()[::-1]  # 预测概率从大到小的索引值
+
+          gt = set(list(np.where(labels > 0)[0]))  # relevant docs的索引值
 
           # Metrics like NDCG and MAP require the total number of relevant docs.
-          # The code below adds missing number of relevant docs to gt so the 
+          # The code below adds missing number of relevant docs to gt so the
           # metrics are the same as if we had used all ground-truths.
           # The extra_gts have all negative ids so they don't interfere with the
           # predicted ids, which are all equal or greater than zero.
           extra_gts = list(-(np.arange(max(0, len_gt_titles[0] - len(gt))) + 1))
           gt.update(extra_gts)
-          
+
           all_metrics += metrics.metrics(
               gt=gt, pred=pred_docs, metrics_map=METRICS_MAP)
 
@@ -490,19 +500,19 @@ def main(_):
 
           example_idx += 1
           results = []
-          
+
         total_count += 1
-        
+
         if total_count % 10000 == 0:
           tf.logging.warn("Read {} examples in {} secs. Metrics so far:".format(
               total_count, int(time.time() - start_time)))
           tf.logging.warn("  ".join(METRICS_MAP))
           tf.logging.warn(all_metrics / example_idx)
-          
-      # Once the feed queues are finished, we can set the verbosity back to 
+
+      # Once the feed queues are finished, we can set the verbosity back to
       # INFO.
       tf.logging.set_verbosity(tf.logging.INFO)
-      
+
       if FLAGS.trec_output:
         trec_file.close()
 
@@ -515,4 +525,3 @@ def main(_):
 
 if __name__ == "__main__":
   tf.app.run()
-

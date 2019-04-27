@@ -145,6 +145,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
      next_sentence_log_probs) = get_next_sentence_output(
          bert_config, model.get_pooled_output(), next_sentence_labels)
 
+    # todo total_loss
     total_loss = masked_lm_loss + next_sentence_loss
 
     tvars = tf.trainable_variables()
@@ -245,6 +246,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
   with tf.variable_scope("cls/predictions"):
     # We apply one more non-linear transformation before the output layer.
     # This matrix is not used after pre-training.
+    # todo understand? such as why using non-linear transformation before the output layer?
     with tf.variable_scope("transform"):
       input_tensor = tf.layers.dense(
           input_tensor,
@@ -287,6 +289,7 @@ def get_next_sentence_output(bert_config, input_tensor, labels):
 
   # Simple binary classification. Note that 0 is "next sentence" and 1 is
   # "random sentence". This weight matrix is not used after pre-training.
+  # todo understand?
   with tf.variable_scope("cls/seq_relationship"):
     output_weights = tf.get_variable(
         "output_weights",

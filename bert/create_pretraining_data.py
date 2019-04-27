@@ -63,6 +63,7 @@ flags.DEFINE_float(
 
 class TrainingInstance(object):
   """A single training instance (sentence pair)."""
+  # todo how to create instance?
 
   def __init__(self, tokens, segment_ids, masked_lm_positions, masked_lm_labels,
                is_random_next):

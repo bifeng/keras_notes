@@ -1,11 +1,9 @@
 """Converts TREC-CAR queries and corpus into TFRecord that will be consumed by BERT.
-
 The main necessary inputs are:
-- Paragraph Corpus (CBOR file) 
+- Paragraph Corpus (CBOR file)
 - Pairs of Query-Relevant Paragraph (called qrels in TREC's nomenclature)
 - Pairs of Query-Candidate Paragraph (called run in TREC's nomenclature)
-
-The outputs are 3 TFRecord files, for training, dev and test. 
+The outputs are 3 TFRecord files, for training, dev and test.
 To be compatible with MS MARCO training scripts, we call the "test" set as "eval".
 """
 import collections
@@ -101,9 +99,9 @@ def convert_dataset(data, corpus, set_name, tokenizer):
       if i % 1000 == 0:
         print('query', query)
       query_ids = tokenization.convert_to_bert_input(
-          text=query, 
+          text=query,
           max_seq_length=FLAGS.max_query_length,
-          tokenizer=tokenizer, 
+          tokenizer=tokenizer,
           add_cls=True)
 
       query_ids_tf = tf.train.Feature(
@@ -122,7 +120,7 @@ def convert_dataset(data, corpus, set_name, tokenizer):
       doc_titles += max(0, max_docs - len(doc_titles)) * [random_title]
 
       labels = [
-          1 if doc_title in qrels else 0 
+          1 if doc_title in qrels else 0
           for doc_title in doc_titles
       ]
 
@@ -222,7 +220,7 @@ def load_corpus(path):
 
 
 def merge(qrels, run):
-  """Merge qrels and runs into a single dict of key: topic, 
+  """Merge qrels and runs into a single dict of key: topic,
   value: tuple(relevant_doc_ids, candidate_doc_ids)"""
   data = collections.OrderedDict()
   for topic, candidate_doc_ids in run.items():
@@ -257,7 +255,7 @@ def main():
                     set_name=set_name,
                     tokenizer=tokenizer)
 
-  print('Done!')  
+  print('Done!')
 
 if __name__ == '__main__':
   main()

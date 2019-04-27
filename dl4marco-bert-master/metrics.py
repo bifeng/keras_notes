@@ -19,8 +19,14 @@ def average_precision(gt, pred):
   -------
   score: double
       The average precision over the input lists
-  """
 
+  example:
+  gt = [doc1, doc2, doc3]
+  pred = [doc4, doc3, doc1, doc2]
+  i = 1 - score = 1/2
+  i = 2 - score = 2/3
+  i = 3 - score = 3/4
+  """
   if not gt:
     return 0.0
 

@@ -1,4 +1,40 @@
+#### setup
 
+refer:
+
+https://blog.csdn.net/will5451/article/details/53861092
+
+settings文件修改：
+
+```python
+ALLOWED_HOSTS = ['*'] # note1
+```
+
+note1 - 避免`Invalid HTTP_HOST header: '10.211.55.6:8000'. You may need to add u'10.211.55.6' to ALLOWED_HOSTS.`
+
+
+
+python manage.py runserver 0.0.0.0:8000
+
+
+
+#### 127.0.0.1/0.0.0.0/本机IP
+
+[what-is-the-difference-between-0-0-0-0-127-0-0-1-and-localhost](https://stackoverflow.com/questions/20778771/what-is-the-difference-between-0-0-0-0-127-0-0-1-and-localhost) :star:
+
+当我们在服务器搭建了一个web服务器的时候，如果监听的端口是127.0.0.1：端口号的时候，那么这个web服务器只可以在服务器本地访问了，在别的地方进行访问是不行的。
+
+一个服务有多个IP地址（192.168.1.2和10.1.1.12），如果设置的监听地址是0.0.0.0，那么我们无论是通过192.168.1.2还是10.1.1.12都是可以访问该服务的。
+
+如果我们监听的是本地IP的话，那么只有通过监听的IP才可以访问我们的对应的服务。
+
+```markdown
+0.0.0.0:9999 外部可以通过本机ip访问，这种方式最保险 
+192.168.0.105:9999 外部可以通过这个ip访问9999 
+127.0.0.1：9999 这种方式外部访问不了，本机可以访问
+```
+
+记得多用telnet测试，端口是否开放或占用
 
 
 
@@ -78,7 +114,7 @@ POST接受及测试：
 curl -H "Content-Type: application/json" -X POST -d "{"name":"XBox","price":3999}" http://localhost:3000/api/products
 ```
 
-Attention: <br>引号问题`"` or `'`
+Attention: <br>引号 - 一定要用双引号`""`
 
 中文编码问题 : `params = json.loads(body.decode())`
 
@@ -92,9 +128,20 @@ Attention: <br>引号问题`"` or `'`
 
 Postman:
 
-
+```json
+{
+	"pretrained_embeddings":["elmo"],
+	"model_mix_strategy":"AVERAGE",
+	"model_mix_weight":[],
+	"weight_strategy":"MEAN",
+	"sentences":"[['天气', '真好'],['hello', 'nlp', 'word']]",    # 内部单引号，外部双引号
+	"mannual_keyword_weight":{}
+}
+```
 
 Attention:
+
+引号 - key及value内容一定要用双引号`""`！！！
 
 返回空值 ：`sentence = request.POST.get('sentence', '')` 
 
@@ -144,6 +191,22 @@ requests.get(apiurl, data)
 
 
 
+#### csrf
+
+https://docs.djangoproject.com/en/2.1/ref/csrf/
+
+http://www.cnblogs.com/lianzhilei/p/6364061.html
+
+```python
+MIDDLEWARE = [
+...
+    'django.middleware.csrf.CsrfViewMiddleware',
+...
+]
+```
+
+
+
 #### csrf_exempt
 
 https://khalsalabs.com/csrf-exempt-in-django/
@@ -163,4 +226,22 @@ def public_api(request):
 ```
 
 Above API will allow a post call without adding csrf parameter in it. Otherwise you have to send csrf token for API calls in django.
+
+#### uwsgi
+
+https://uwsgi-docs-additions.readthedocs.io/en/latest/Options.html
+
+
+
+##### [worker dies by signal 6 + Fatal Python error: Inconsistent interned string state.](https://github.com/unbit/uwsgi/issues/1111#) #1111
+
+
+
+##### [DAMN ! worker 1 (pid: 108) died, killed by signal 9 :( trying respawn ...](https://github.com/unbit/uwsgi/issues/1779#) #1779
+
+more refer: [使用uWSGI和nginx如何设置连接超时时间](https://www.jianshu.com/p/f5ee6b6b7e54)
+
+
+
+##### [uWSGI request timeout in Python](https://stackoverflow.com/questions/24127601/uwsgi-request-timeout-in-python)
 

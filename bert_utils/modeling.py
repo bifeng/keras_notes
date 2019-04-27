@@ -23,16 +23,8 @@ import copy
 import json
 import math
 import re
-import numpy as np
 import six
 import tensorflow as tf
-
-"""
-Summary:
-1. using the truncated_normal_initializer for initializing all weight matrices.
-2. 
-
-"""
 
 
 class BertConfig(object):
@@ -54,7 +46,7 @@ class BertConfig(object):
 
     Args:
       vocab_size: Vocabulary size of `inputs_ids` in `BertModel`.
-      hidden_size: Size of the encoder layers and the pooler layer.  todo size of the pooler layer?
+      hidden_size: Size of the encoder layers and the pooler layer.
       num_hidden_layers: Number of hidden layers in the Transformer encoder.
       num_attention_heads: Number of attention heads for each attention layer in
         the Transformer encoder.
@@ -65,7 +57,7 @@ class BertConfig(object):
       hidden_dropout_prob: The dropout probability for all fully connected
         layers in the embeddings, encoder, and pooler.
       attention_probs_dropout_prob: The dropout ratio for the attention
-        probabilities.  todo how to dropout attention ?
+        probabilities.
       max_position_embeddings: The maximum sequence length that this model might
         ever be used with. Typically set this to something large just in case
         (e.g., 512 or 1024 or 2048).
@@ -112,7 +104,7 @@ class BertConfig(object):
 
 
 class BertModel(object):
-  """BERT model ("Bidirectional Encoder Representations from Transformers").
+  """BERT model ("Bidirectional Embedding Representations from a Transformer").
 
   Example usage:
 
@@ -120,10 +112,8 @@ class BertModel(object):
   # Already been converted into WordPiece token ids
   input_ids = tf.constant([[31, 51, 99], [15, 5, 0]])
   input_mask = tf.constant([[1, 1, 1], [1, 1, 0]])
-  token_type_ids = tf.constant([[0, 0, 1], [0, 2, 0]])  # todo token_type_ids=segment_ids should be tf.constant([[0, 0, 0], [1, 1, 0]]) ?
+  token_type_ids = tf.constant([[0, 0, 1], [0, 2, 0]])
 
-  # 创建一个BertConfig，词典大小是32000，Transformer的隐单元个数是512
-  # 8个Transformer block，每个block有6个Attention Head，全连接层的隐单元是1024
   config = modeling.BertConfig(vocab_size=32000, hidden_size=512,
     num_hidden_layers=8, num_attention_heads=6, intermediate_size=1024)
 
@@ -131,7 +121,6 @@ class BertModel(object):
     input_ids=input_ids, input_mask=input_mask, token_type_ids=token_type_ids)
 
   label_embeddings = tf.get_variable(...)
-  # 得到[CLS]最后一层输出，把它看成句子的Embedding(Encoding)
   pooled_output = model.get_pooled_output()
   logits = tf.matmul(pooled_output, label_embeddings)
   ...
@@ -144,21 +133,21 @@ class BertModel(object):
                input_ids,
                input_mask=None,
                token_type_ids=None,
-               use_one_hot_embeddings=False,
+               use_one_hot_embeddings=True,
                scope=None):
     """Constructor for BertModel.
 
     Args:
       config: `BertConfig` instance.
-      is_training: bool. true for training model, false for eval model. Controls
+      is_training: bool. rue for training model, false for eval model. Controls
         whether dropout will be applied.
       input_ids: int32 Tensor of shape [batch_size, seq_length].
       input_mask: (optional) int32 Tensor of shape [batch_size, seq_length].
       token_type_ids: (optional) int32 Tensor of shape [batch_size, seq_length].
       use_one_hot_embeddings: (optional) bool. Whether to use one-hot word
-        embeddings or tf.embedding_lookup() for the word embeddings.
-        #  如果True，使用矩阵乘法实现提取词的Embedding；否则用tf.embedding_lookup()
-        #  对于TPU，使用前者更快，对于GPU和CPU，后者更快。
+        embeddings or tf.embedding_lookup() for the word embeddings. On the TPU,
+        it is must faster if this is True, on the CPU or GPU, it is faster if
+        this is False.
       scope: (optional) variable scope. Defaults to "bert".
 
     Raises:
@@ -193,7 +182,6 @@ class BertModel(object):
 
         # Add positional embeddings and token type embeddings, then layer
         # normalize and perform dropout.
-        # token type embedding is the segment embedding
         self.embedding_output = embedding_postprocessor(
             input_tensor=self.embedding_output,
             use_token_type=True,
@@ -229,20 +217,14 @@ class BertModel(object):
             do_return_all_layers=True)
 
       self.sequence_output = self.all_encoder_layers[-1]
-
       # The "pooler" converts the encoded sequence tensor of shape
       # [batch_size, seq_length, hidden_size] to a tensor of shape
       # [batch_size, hidden_size]. This is necessary for segment-level
       # (or segment-pair-level) classification tasks where we need a fixed
       # dimensional representation of the segment.
-      """
-      This is necessary for segment-level (or segment-pair-level) classification tasks where we need a fixed dimensional
-      representation of the segment.
-      """
-      # todo why this pooler using fully connected layer output ?
       with tf.variable_scope("pooler"):
         # We "pool" the model by simply taking the hidden state corresponding
-        # to the first token ([CLS]对应的tensor). We assume that this has been pre-trained
+        # to the first token. We assume that this has been pre-trained
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = tf.layers.dense(
             first_token_tensor,
@@ -280,21 +262,20 @@ class BertModel(object):
     return self.embedding_table
 
 
-def gelu(x):
+def gelu(input_tensor):
   """Gaussian Error Linear Unit.
 
   This is a smoother version of the RELU.
   Original paper: https://arxiv.org/abs/1606.08415
+
   Args:
-    x: float Tensor to perform activation.
+    input_tensor: float Tensor to perform activation.
 
   Returns:
-    `x` with the GELU activation applied.
-  todo  what's the advantage of this evaluation function (read this paper)?
+    `input_tensor` with the GELU activation applied.
   """
-  cdf = 0.5 * (1.0 + tf.tanh(
-      (np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3)))))
-  return x * cdf
+  cdf = 0.5 * (1.0 + tf.erf(input_tensor / tf.sqrt(2.0)))
+  return input_tensor * cdf
 
 
 def get_activation(activation_string):
@@ -381,14 +362,6 @@ def dropout(input_tensor, dropout_prob):
 
 def layer_norm(input_tensor, name=None):
   """Run layer normalization on the last dimension of the tensor."""
-  """
-    Adds a Layer Normalization layer.
-    Based on the paper:
-    "Layer Normalization"
-    Jimmy Lei Ba, Jamie Ryan Kiros, Geoffrey E. Hinton
-    https://arxiv.org/abs/1607.06450.
-    Can be used as a normalizer function for conv2d and fully_connected.
-  """  # todo what's the advantage of layer_norm?
   return tf.contrib.layers.layer_norm(
       inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name)
 
@@ -421,7 +394,8 @@ def embedding_lookup(input_ids,
     initializer_range: float. Embedding initialization range.
     word_embedding_name: string. Name of the embedding table.
     use_one_hot_embeddings: bool. If True, use one-hot method for word
-      embeddings. If False, use `tf.gather()`.
+      embeddings. If False, use `tf.nn.embedding_lookup()`. One hot is better
+      for TPUs.
 
   Returns:
     float Tensor of shape [batch_size, seq_length, embedding_size].
@@ -439,12 +413,12 @@ def embedding_lookup(input_ids,
       shape=[vocab_size, embedding_size],
       initializer=create_initializer(initializer_range))
 
-  flat_input_ids = tf.reshape(input_ids, [-1])
   if use_one_hot_embeddings:
+    flat_input_ids = tf.reshape(input_ids, [-1])
     one_hot_input_ids = tf.one_hot(flat_input_ids, depth=vocab_size)
     output = tf.matmul(one_hot_input_ids, embedding_table)
   else:
-    output = tf.gather(embedding_table, flat_input_ids)
+    output = tf.nn.embedding_lookup(embedding_table, input_ids)
 
   input_shape = get_shape_list(input_ids)
 
@@ -464,7 +438,7 @@ def embedding_postprocessor(input_tensor,
                             max_position_embeddings=512,
                             dropout_prob=0.1):
   """Performs various post-processing on a word embedding tensor.
-  todo  why using (layer norm and dropout) postprocess for all embeddings? What's the effect?
+
   Args:
     input_tensor: float Tensor of shape [batch_size, seq_length,
       embedding_size].
@@ -530,7 +504,6 @@ def embedding_postprocessor(input_tensor,
       # for position [0, 1, 2, ..., max_position_embeddings-1], and the current
       # sequence has positions [0, 1, 2, ... seq_length-1], so we can just
       # perform a slice.
-      # todo what's the effect of using slice? not only improve speed, but also imporve precision?
       position_embeddings = tf.slice(full_position_embeddings, [0, 0],
                                      [seq_length, -1])
       num_dims = len(output.shape.as_list())
@@ -538,11 +511,9 @@ def embedding_postprocessor(input_tensor,
       # Only the last two dimensions are relevant (`seq_length` and `width`), so
       # we broadcast among the first dimensions, which is typically just
       # the batch size.
-      # todo why the position embedding have no batch size dimension?
       position_broadcast_shape = []
       for _ in range(num_dims - 2):
         position_broadcast_shape.append(1)
-      # 默认情况下position_broadcast_shape为[1, 128, 768]
       position_broadcast_shape.extend([seq_length, width])
       position_embeddings = tf.reshape(position_embeddings,
                                        position_broadcast_shape)
@@ -561,36 +532,6 @@ def create_attention_mask_from_input_mask(from_tensor, to_mask):
 
   Returns:
     float Tensor of shape [batch_size, from_seq_length, to_seq_length].
-
-  Example:
-    input_ids=[
-	[1,2,3,0,0],
-	[1,3,5,6,1]
-    ]
-    input_mask=[
-        [1,1,1,0,0],
-        [1,1,1,1,1]
-    ]
-
-在计算Self-Attention的时候每一个样本都需要一个Attention Mask矩阵，表示每一个时刻可以attend to的范围，
-1表示可以attend，0表示是padding的(或者在机器翻译的Decoder中不能attend to未来的词)。
-
-    [
-        [1, 1, 1, 0, 0], #它表示第1个词可以attend to 3个词
-        [1, 1, 1, 0, 0], #它表示第2个词可以attend to 3个词
-        [1, 1, 1, 0, 0], #它表示第3个词可以attend to 3个词
-        [1, 1, 1, 0, 0], #无意义，因为输入第4个词是padding的0
-        [1, 1, 1, 0, 0]  #无意义，因为输入第5个词是padding的0
-    ]
-
-    [
-        [1, 1, 1, 1, 1], # 它表示第1个词可以attend to 5个词
-        [1, 1, 1, 1, 1], # 它表示第2个词可以attend to 5个词
-        [1, 1, 1, 1, 1], # 它表示第3个词可以attend to 5个词
-        [1, 1, 1, 1, 1], # 它表示第4个词可以attend to 5个词
-        [1, 1, 1, 1, 1]	 # 它表示第5个词可以attend to 5个词
-    ]
-
   """
   from_shape = get_shape_list(from_tensor, expected_rank=[2, 3])
   batch_size = from_shape[0]
@@ -636,8 +577,6 @@ def attention_layer(from_tensor,
   is all you Need". If `from_tensor` and `to_tensor` are the same, then
   this is self-attention. Each timestep in `from_tensor` attends to the
   corresponding sequence in `to_tensor`, and returns a fixed-with vector.
-
-  todo practice multi-headed attention
 
   This function first projects `from_tensor` into a "query" tensor and
   `to_tensor` into "key" and "value" tensors. These are (effectively) a list
@@ -766,7 +705,6 @@ def attention_layer(from_tensor,
                                  1.0 / math.sqrt(float(size_per_head)))
 
   if attention_mask is not None:
-    # todo attention mask
     # `attention_mask` = [B, 1, F, T]
     attention_mask = tf.expand_dims(attention_mask, axis=[1])
 
@@ -802,12 +740,12 @@ def attention_layer(from_tensor,
   context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
 
   if do_return_2d_tensor:
-    # `context_layer` = [B*F, N*H]
+    # `context_layer` = [B*F, N*V]
     context_layer = tf.reshape(
         context_layer,
         [batch_size * from_seq_length, num_attention_heads * size_per_head])
   else:
-    # `context_layer` = [B, F, N*H]
+    # `context_layer` = [B, F, N*V]
     context_layer = tf.reshape(
         context_layer,
         [batch_size, from_seq_length, num_attention_heads * size_per_head])
@@ -835,8 +773,6 @@ def transformer_model(input_tensor,
 
   Also see:
   https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/models/transformer.py
-
-  todo practice Transformer
 
   Args:
     input_tensor: float Tensor of shape [batch_size, seq_length, hidden_size].

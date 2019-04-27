@@ -38,9 +38,9 @@
 
 ### paper
 
-+ FRAGE: Frequency-Agnostic Word Representation, Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-Yan Liu, NIPS 2018 [arxiv](https://arxiv.org/abs/1809.06858) 
+- [ ] FRAGE: Frequency-Agnostic Word Representation, Chengyue Gong, Di He, Xu Tan, Tao Qin, Liwei Wang, Tie-Yan Liu, NIPS 2018 [arxiv](https://arxiv.org/abs/1809.06858) 
 
-+ A Sensitivity Analysis of (and Practitioners' Guide to) Convolutional Neural Networks for Sentence Classification, Ye Zhang, Byron Wallace, 2016 [arxiv](https://arxiv.org/abs/1510.03820) 
+- [x] A Sensitivity Analysis of (and Practitioners' Guide to) Convolutional Neural Networks for Sentence Classification, Ye Zhang, Byron Wallace, 2016 [arxiv](https://arxiv.org/abs/1510.03820) 
 
 
 

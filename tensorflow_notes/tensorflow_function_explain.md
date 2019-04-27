@@ -674,57 +674,6 @@ def accuracy(labels,
 + Backpropagation will happen into both `logits` and `labels` ?
 + 
 
-#### next_batch
-
-more: https://blog.csdn.net/appleml/article/details/57413615
-
-
-
-```python
-class DataSet(object):
-   def __init__(self, images, labels, fake_data=False):
-    if fake_data:
-      self._num_examples = 10000
-    else:
-      assert images.shape[0] == labels.shape[0], (
-          "images.shape: %s labels.shape: %s" % (images.shape,
-                                                 labels.shape))
-      self._num_examples = images.shape[0]
-      # Convert shape from [num examples, rows, columns, depth]
-      # to [num examples, rows*columns] (assuming depth == 1)
-      assert images.shape[3] == 1
-      images = images.reshape(images.shape[0],
-                              images.shape[1] * images.shape[2])
-      # Convert from [0, 255] -> [0.0, 1.0].
-      images = images.astype(numpy.float32)
-      images = numpy.multiply(images, 1.0 / 255.0)
-    self._images = images
-    self._labels = labels
-    self._epochs_completed = 0
-    self._index_in_epoch = 0
-    
-  def next_batch(self, batch_size, fake_data=False):
-    """Return the next `batch_size` examples from this data set."""
-...
-	# 如果所有batch_size之和超过样本量，则对数据进行shuffle并开始新一轮(epoch)遍历
-    start = self._index_in_epoch
-    self._index_in_epoch += batch_size
-    if self._index_in_epoch > self._num_examples:
-      # Finished epoch
-      self._epochs_completed += 1
-      # Shuffle the data
-      perm = numpy.arange(self._num_examples)
-      numpy.random.shuffle(perm)
-      self._images = self._images[perm]
-      self._labels = self._labels[perm]
-      # Start next epoch
-      start = 0
-      self._index_in_epoch = batch_size
-      assert batch_size <= self._num_examples
-    end = self._index_in_epoch
-    return self._images[start:end], self._labels[start:end]
-```
-
 
 
 
@@ -901,13 +850,70 @@ https://tensorflow.google.cn/api_docs/python/tf/contrib/eager/implicit_gradients
 
 
 
-
-
 ## feature_column
 
 tf.feature_column.input_layer
 
 
+
+## nn
+
+### tf.nn.conv2d
+
+[Possibly buffer overflow in tf.nn.conv2d on GPU #24196](https://github.com/tensorflow/tensorflow/issues/24196)
+
+https://tensorflow.google.cn/api_docs/python/tf/nn/conv2d
+
+```python
+tf.nn.conv2d(
+    input,
+    filter,
+    strides,
+    padding,
+    use_cudnn_on_gpu=True,  # why need explicit this arguments?
+    data_format='NHWC',
+    dilations=[1, 1, 1, 1],
+    name=None
+)
+```
+
+Defined in generated file: `tensorflow/python/ops/gen_nn_ops.py`.
+
+https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/nn_ops.py
+
+https://stackoverflow.com/questions/34835503/tensorflow-where-is-tf-nn-conv2d-actually-executed
+
+[【TensorFlow】tf.nn.conv2d是怎样实现卷积的？](https://blog.csdn.net/mao_xiao_feng/article/details/53444333)
+
+### tf.nn.dropout
+
+Defined in [`tensorflow/python/ops/nn_ops.py`](https://tensorflow.google.cn/code/stable/tensorflow/python/ops/nn_ops.py).
+
+```python
+tf.nn.dropout(
+    x,
+    keep_prob=None,  # DEPRECATED
+    noise_shape=None,
+    seed=None,
+    name=None,
+    rate=None  # rate = 1 - keep_prob
+)
+```
+
+
+
+### tf.nn.xw_plus_b
+
+Defined in [`tensorflow/python/ops/nn_ops.py`](https://tensorflow.google.cn/code/stable/tensorflow/python/ops/nn_ops.py).
+
+```python
+tf.nn.xw_plus_b(
+    x,
+    weights,
+    biases,
+    name=None
+)
+```
 
 
 
@@ -942,6 +948,95 @@ def dense(
 
 
 
+## Dataset
+
+### from_generator
+
+tf.data.Dataset.from_generator
+
+
+
+Case 1: ValueError: `generator` yielded an element of shape (1, 28, 28, 1) where an element of shape (11, 28, 28, 1) was expected. 
+
+When specifying Tensor shapes in `from_generator`, you can use `None` as an element to specify variable-sized dimensions. This way you can accommodate batches of different sizes, in particular "leftover" batches that are a bit smaller than your requested batch size. So you would use
+
+```
+def make_fashion_dset(file_name, batch_size, shuffle=False):
+    dgen = _make_fashion_generator_fn(file_name, batch_size)
+    features_shape = [None, 28, 28, 1]
+    labels_shape = [None, 10]
+    ds = tf.data.Dataset.from_generator(
+        dgen, (tf.float32, tf.uint8),
+        (tf.TensorShape(features_shape), tf.TensorShape(labels_shape))
+    )
+    ...
+```
+
+refer: [TensorFlow DataSet `from_generator` with variable batch size](https://stackoverflow.com/questions/52121347/tensorflow-dataset-from-generator-with-variable-batch-size)
+
+### next_batch
+
+more: https://blog.csdn.net/appleml/article/details/57413615
+
+
+
+```python
+class DataSet(object):
+   def __init__(self, images, labels, fake_data=False):
+    if fake_data:
+      self._num_examples = 10000
+    else:
+      assert images.shape[0] == labels.shape[0], (
+          "images.shape: %s labels.shape: %s" % (images.shape,
+                                                 labels.shape))
+      self._num_examples = images.shape[0]
+      # Convert shape from [num examples, rows, columns, depth]
+      # to [num examples, rows*columns] (assuming depth == 1)
+      assert images.shape[3] == 1
+      images = images.reshape(images.shape[0],
+                              images.shape[1] * images.shape[2])
+      # Convert from [0, 255] -> [0.0, 1.0].
+      images = images.astype(numpy.float32)
+      images = numpy.multiply(images, 1.0 / 255.0)
+    self._images = images
+    self._labels = labels
+    self._epochs_completed = 0
+    self._index_in_epoch = 0
+    
+  def next_batch(self, batch_size, fake_data=False):
+    """Return the next `batch_size` examples from this data set."""
+...
+	# 如果所有batch_size之和超过样本量，则对数据进行shuffle并开始新一轮(epoch)遍历
+    start = self._index_in_epoch
+    self._index_in_epoch += batch_size
+    if self._index_in_epoch > self._num_examples:
+      # Finished epoch
+      self._epochs_completed += 1
+      # Shuffle the data
+      perm = numpy.arange(self._num_examples)
+      numpy.random.shuffle(perm)
+      self._images = self._images[perm]
+      self._labels = self._labels[perm]
+      # Start next epoch
+      start = 0
+      self._index_in_epoch = batch_size
+      assert batch_size <= self._num_examples
+    end = self._index_in_epoch
+    return self._images[start:end], self._labels[start:end]
+```
+
+
+
+### map_and_batch
+
+https://tensorflow.google.cn/api_docs/python/tf/data/experimental/map_and_batch
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/data/map_and_batch
+
+Maps `map_func` across `batch_size` consecutive elements of this dataset and then combines them into a batch. Functionally, it is equivalent to `map` followed by `batch`. However, by fusing the two transformations together, the implementation can be more efficient. 
+
+
+
 ## estimator
 
 ### Estimator
@@ -949,6 +1044,42 @@ def dense(
 tf.estimator.Estimator
 
 TF Estimator input is a dict, in case of multiple inputs
+
+https://tensorflow.google.cn/api_docs/python/tf/estimator/Estimator
+
+```python
+train(
+    input_fn,
+    hooks=None,
+    steps=None,
+    max_steps=None,
+    saving_listeners=None
+)
+input_fn: A function that provides input data for training as minibatches. See Premade Estimators for more information. The function should construct and return one of the following: * A tf.data.Dataset object: Outputs of Dataset object must be a tuple (features, labels) with same constraints as below. * A tuple (features, labels): Where features is a tf.Tensor or a dictionary of string feature name to Tensor and labels is a Tensor or a dictionary of string label name to Tensor. Both features and labels are consumed by model_fn. ****They should satisfy the expectation of model_fn from inputs.****
+
+```
+
+
+
+```python
+predict(
+    input_fn,
+    predict_keys=None,
+    hooks=None,
+    checkpoint_path=None,
+    yield_single_examples=True
+)
+hooks: List of tf.train.SessionRunHook subclass instances. Used for callbacks inside the prediction call.
+yield_single_examples: If False, yields the whole batch as returned by the model_fn instead of decomposing the batch into individual elements. This is useful if model_fn returns some tensors whose first dimension is not equal to the batch size.
+```
+
+
+
+#### convert estimator to tpuestimator
+
+https://cloud.google.com/tpu/docs/tutorials/migrating-to-tpuestimator-api
+
+https://github.com/tensorflow/models/tree/master/official/mnist
 
 
 
@@ -958,9 +1089,71 @@ tf.estimator.EstimatorSpec
 
 TF Estimators requires to return a EstimatorSpec, that specify the different ops for training, evaluating, predicting
 
+https://tensorflow.google.cn/api_docs/python/tf/estimator/EstimatorSpec
+
+```python
+@staticmethod
+__new__(
+    cls,
+    mode,
+    predictions=None,
+    loss=None,
+    train_op=None,
+    eval_metric_ops=None,
+    export_outputs=None,
+    training_chief_hooks=None,
+    training_hooks=None,
+    scaffold=None,
+    evaluation_hooks=None,
+    prediction_hooks=None
+)
+
+scaffold: A tf.train.Scaffold object that can be used to set initialization, saver, and more to be used in training.
+```
+
+https://tensorflow.google.cn/api_docs/python/tf/train/Scaffold
+
 
 
 tf.estimator.ModeKeys.PREDICT
+
+
+
+### RunConfig
+
+https://tensorflow.google.cn/api_docs/python/tf/estimator/RunConfig
+
+```python
+__init__(
+    model_dir=None,
+    tf_random_seed=None,
+    save_summary_steps=100,
+    save_checkpoints_steps=_USE_DEFAULT,
+    save_checkpoints_secs=_USE_DEFAULT,
+    session_config=None,
+    keep_checkpoint_max=5,
+    keep_checkpoint_every_n_hours=10000,
+    log_step_count_steps=100,
+    train_distribute=None,
+    device_fn=None,
+    protocol=None,
+    eval_distribute=None,
+    experimental_distribute=None
+)
+
+session_config: a ConfigProto used to set session parameters, or None.
+
+```
+
+https://tensorflow.google.cn/api_docs/python/tf/ConfigProto
+
+https://tensorflow.google.cn/api_docs/python/tf/distribute/Strategy
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/distribute/MirroredStrategy  Mirrors vars to distribute across multiple devices and machines.
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/distribute/CrossDeviceOps
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/distribute/AllReduceCrossDeviceOps
 
 
 
@@ -972,7 +1165,94 @@ https://www.tensorflow.org/api_docs/python/tf/contrib/estimator/multi_head
 
 multi-objective learning
 
+### TPU
 
+
+
+```
+the TPU only supports tf.int32
+
+# TPU requires a fixed batch size for all batches, therefore the number
+# of examples must be a multiple of the batch size, or else examples
+# will get dropped. So we pad with fake examples which are ignored
+# later on.
+```
+
+#### TPUEstimator
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/tpu/TPUEstimator
+
+```python
+__init__(
+    model_fn=None,
+    model_dir=None,
+    config=None,
+    params=None,
+    use_tpu=True,
+    train_batch_size=None,
+    eval_batch_size=None,
+    predict_batch_size=None,
+    batch_axis=None,
+    eval_on_tpu=True,
+    export_to_tpu=True,
+    warm_start_from=None
+)
+params: An optional dict of hyper parameters that will be passed into input_fn and model_fn. Keys are names of parameters, values are basic python types. There are reserved keys for TPUEstimator, including 'batch_size'.
+use_tpu: A bool indicating whether TPU support is enabled. Currently, - TPU training and evaluation respect this bit, but eval_on_tpu can override execution of eval. See below. - Predict still happens on CPU.
+train_batch_size: An int representing the global training batch size. TPUEstimator transforms this global batch size to a per-shard batch size, as params['batch_size'], when calling input_fn and model_fn. Cannot be None if use_tpu is True. Must be divisible by total number of replicas.
+eval_batch_size: An int representing evaluation batch size. Must be divisible by total number of replicas.
+predict_batch_size: An int representing the prediction batch size. Must be divisible by total number of replicas.
+```
+
+TPUEstimator transforms a global batch size in params to a per-shard batch size when calling the `input_fn` and `model_fn`. Users should specify global batch size in constructor, and then get the batch size for each shard in `input_fn` and `model_fn` by `params['batch_size']`.
+
+One can set `use_tpu` to `False` for testing. All training, evaluation, and predict will be executed on CPU. `input_fn` and `model_fn` will receive `train_batch_size` or `eval_batch_size` unmodified as `params['batch_size']`.
+
+```python
+height = 32
+width = 32
+total_examples = 100
+
+def predict_input_fn(params):
+  batch_size = params['batch_size']
+
+  images = tf.random_uniform(
+      [total_examples, height, width, 3], minval=-1, maxval=1)
+
+  dataset = tf.data.Dataset.from_tensor_slices(images)
+  dataset = dataset.map(lambda images: {'image': images})
+
+  dataset = dataset.batch(batch_size)
+  return dataset
+
+def model_fn(features, labels, params, mode):
+   # Generate predictions, called 'output', from features['image']
+
+  if mode == tf.estimator.ModeKeys.PREDICT:
+    return tf.contrib.tpu.TPUEstimatorSpec(
+        mode=mode,
+        predictions={
+            'predictions': output,
+            'is_padding': features['is_padding']
+        })
+
+tpu_est = TPUEstimator(
+    model_fn=model_fn,
+    ...,
+    predict_batch_size=16)
+
+# Fully consume the generator so that TPUEstimator can shutdown the TPU
+# system.
+for item in tpu_est.predict(input_fn=input_fn):
+  # Filter out item if the `is_padding` is 1.
+  # Process the 'predictions'
+```
+
+#### RunConfig
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/tpu/RunConfig
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/tpu/TPUConfig
 
 ## model managment
 

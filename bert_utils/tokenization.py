@@ -19,67 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import re
 import unicodedata
 import six
 import tensorflow as tf
 
 
-def validate_case_matches_checkpoint(do_lower_case, init_checkpoint):
-  """Checks whether the casing config is consistent with the checkpoint name."""
-
-  # The casing has to be passed in by the user and there is no explicit check
-  # as to whether it matches the checkpoint. The casing information probably
-  # should have been stored in the bert_config.json file, but it's not, so
-  # we have to heuristically detect it to validate.
-
-  if not init_checkpoint:
-    return
-
-  m = re.match("^.*?([A-Za-z0-9_-]+)/bert_model.ckpt", init_checkpoint)
-  if m is None:
-    return
-
-  model_name = m.group(1)
-
-  lower_models = [
-      "uncased_L-24_H-1024_A-16", "uncased_L-12_H-768_A-12",
-      "multilingual_L-12_H-768_A-12", "chinese_L-12_H-768_A-12"
-  ]
-
-  cased_models = [
-      "cased_L-12_H-768_A-12", "cased_L-24_H-1024_A-16",
-      "multi_cased_L-12_H-768_A-12"
-  ]
-
-  is_bad_config = False
-  if model_name in lower_models and not do_lower_case:
-    is_bad_config = True
-    actual_flag = "False"
-    case_name = "lowercased"
-    opposite_flag = "True"
-
-  if model_name in cased_models and do_lower_case:
-    is_bad_config = True
-    actual_flag = "True"
-    case_name = "cased"
-    opposite_flag = "False"
-
-  if is_bad_config:
-    raise ValueError(
-        "You passed in `--do_lower_case=%s` with `--init_checkpoint=%s`. "
-        "However, `%s` seems to be a %s model, so you "
-        "should pass in `--do_lower_case=%s` so that the fine-tuning matches "
-        "how the model was pre-training. If this error is wrong, please "
-        "just comment out this check." % (actual_flag, init_checkpoint,
-                                          model_name, case_name, opposite_flag))
-
-
 def convert_to_unicode(text):
   """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
-  """
-  为了兼容Python2和Python3，因为Python3的str就是unicode，而Python2的str其实是bytearray，Python2却有一个专门的unicode类型。
-  """
   if six.PY3:
     if isinstance(text, str):
       return text
@@ -222,34 +168,6 @@ class BasicTokenizer(object):
 
   def _run_strip_accents(self, text):
     """Strips accents from a piece of text."""
-    """
-    Example:
-    >>> s1 = 'café'
-    >>> s2 = 'cafe\u0301'  
-    >>> s1, s2
-    ('café', 'café')
-    >>> len(s1), len(s2)
-    (4, 5)
-    >>> s1 == s2
-    False
-    >>> '\u0301'
-    '́'
-    
-    >>> print("%#x" %(ord('é')))
-    0xe9
-    >>> print("%#x" %(ord('e')))
-    0x65
-    >>> print("%#x" %(ord('́')))
-    0x301
-    >>> s = unicodedata.normalize("NFD", "é")
-        for c in s:
-            print("%#x" %(ord(c)))  
-    0x65
-    0x301
-    
-    U+0301是COMBINING ACUTE ACCENT，unicode类别是Mn
-    https://www.fileformat.info/info/unicode/category/Mn/list.htm
-    """
     text = unicodedata.normalize("NFD", text)
     output = []
     for char in text:
@@ -302,9 +220,6 @@ class BasicTokenizer(object):
     # as is Japanese Hiragana and Katakana. Those alphabets are used to write
     # space-separated words, so they are not treated specially and handled
     # like the all of the other languages.
-    """
-    https://www.cnblogs.com/straybirds/p/6392306.html
-    """
     if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
         (cp >= 0x3400 and cp <= 0x4DBF) or  #
         (cp >= 0x20000 and cp <= 0x2A6DF) or  #
@@ -319,9 +234,6 @@ class BasicTokenizer(object):
 
   def _clean_text(self, text):
     """Performs invalid character removal and whitespace cleanup on text."""
-    """
-    codepoint为0的是无意义的字符，0xfffd(U+FFFD)显示为�，通常用于替换未知的字符。
-    """
     output = []
     for char in text:
       cp = ord(char)
@@ -412,10 +324,6 @@ def _is_control(char):
   """Checks whether `chars` is a control character."""
   # These are technically control characters but we count them as whitespace
   # characters.
-  """
-  https://en.wikipedia.org/wiki/Unicode_control_characters
-  https://en.wikipedia.org/wiki/Unicode_character_property#General_Category
-  """
   if char == "\t" or char == "\n" or char == "\r":
     return False
   cat = unicodedata.category(char)
@@ -426,9 +334,6 @@ def _is_control(char):
 
 def _is_punctuation(char):
   """Checks whether `chars` is a punctuation character."""
-  """
-  https://en.wikipedia.org/wiki/Unicode_character_property
-  """
   cp = ord(char)
   # We treat all non-letter/number ASCII as punctuation.
   # Characters such as "^", "$", and "`" are not in the Unicode

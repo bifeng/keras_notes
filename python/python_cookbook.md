@@ -63,7 +63,7 @@ In [210]: %%timeit
 1000 loops, best of 3: 1.18 ms per loop
 
 In [211]: %%timeit
-   .....: a = np.empty((0,3), int)
+   .....: a = np.empty((0,3), int)  # (0,3) 注意-某个维度必须为0
    .....: for i in xrange(1000):
    .....:     a = np.append(a, 3*i+np.array([[1,2,3]]), 0)
    .....: 
@@ -310,6 +310,157 @@ executing static_foo(para)
 https://stackoverflow.com/questions/4613000/what-is-the-cls-variable-used-for-in-python-classes
 
 
+
+#### find-incremental-numbered-sequences
+
+https://stackoverflow.com/questions/16315189/python-find-incremental-numbered-sequences-with-a-list-comprehension
+
+```py
+>>> from itertools import groupby, count
+>>> nums = [1, 2, 3, 4, 8, 10, 11, 12, 17]
+>>> [list(g) for k, g in groupby(nums, key=lambda n, c=count(): n - next(c))]
+[[1, 2, 3, 4], [8], [10, 11, 12], [17]]
+```
+
+`c` is a counter, so it gives each element in the list an index (`0`, `1`, etc.) then groups values on the difference between their index and their actual value. `[1, 2, 3, 4]` all differ from their index by `1`, `[8]` differs from it's index by 4, etc.
+
+
+
+#### sorted
+
+https://www.cnblogs.com/sysu-blackbear/p/3283993.html
+
+https://stackoverflow.com/questions/613183/how-do-i-sort-a-dictionary-by-value?rq=1
+
+https://stackoverflow.com/questions/72899/how-do-i-sort-a-list-of-dictionaries-by-a-value-of-the-dictionary?rq=1
+
+
+
+For list:
+
+```py
+ls=[{'name':'Homer', 'age':39}, {'name':'Bart', 'age':10}]
+sorted(ls, key=lambda x:x['name'])  # x，即为字典
+>>[{'name': 'Bart', 'age': 10}, {'name': 'Homer', 'age': 39}]
+from operator import itemgetter
+newlist = sorted(ls, key=itemgetter('name'))  # item，即为字典
+>>[{'name': 'Bart', 'age': 10}, {'name': 'Homer', 'age': 39}]
+```
+
+For dict:
+
+It is not possible to sort a dictionary, only to get a representation of a dictionary that is sorted. Dictionaries are inherently orderless, but other types, such as lists and tuples, are not. So you need an ordered data type to represent sorted values, which will be a list—probably a list of tuples.
+
+```py
+import operator
+x = {1: 2, 3: 4, 4: 3, 2: 1, 0: 0}
+sorted_x = sorted(x.items(), key=operator.itemgetter(0))  # sort by key - item,即为元组
+sorted_x = sorted(x.items(), key=lambda kv: kv[0])  # python3
+>>[(0, 0), (1, 2), (2, 1), (3, 4), (4, 3)]
+sorted_x = sorted(x.items(), key=operator.itemgetter(1))  # sort by value - item,即为元组
+sorted_x = sorted(x.items(), key=lambda kv: kv[1])  # python3
+>>[(0, 0), (2, 1), (1, 2), (4, 3), (3, 4)]
+```
+
+`sorted_x` will be a list of tuples sorted by the second element in each tuple. `dict(sorted_x) == x`.
+
+If you want the output as a dict, you can use [`collections.OrderedDict`](https://docs.python.org/3/library/collections.html#collections.OrderedDict):
+
+```py
+import collections
+sorted_dict = OrderedDict(sorted_x)
+```
+
+
+
+多级排序：
+
+```python
+students = [('john', 'A', 15), ('jane', 'B', 12), ('dave', 'B', 10)]
+sorted(students, key=itemgetter(1,2))  # sort by grade then by age  
+>>[('john', 'A', 15), ('dave', 'B', 10), ('jane', 'B', 12)] 
+sorted(students, key=lambda x: (x[1], -x[2]))  # sort by grade then by age 
+>> [('john', 'A', 15), ('jane', 'B', 12), ('dave', 'B', 10)]
+```
+
+
+
+### Exception
+
+#### [try:except:finally](https://stackoverflow.com/questions/7777456/python-tryexceptfinally)
+
+
+
+#### [pass a variable to an exception when raised and retrieve it when excepted?](https://stackoverflow.com/questions/6626816/how-to-pass-a-variable-to-an-exception-when-raised-and-retrieve-it-when-excepted)
+
+Give its constructor an argument, store that as an attribute, then retrieve it in the `except` clause:
+
+```
+class FooException(Exception):
+    def __init__(self, *args):
+        self.args = args
+        
+try:
+    raise FooException("Foo!")
+except FooException as e:
+    print e.args
+    
+# or
+
+class FooException(Exception):
+    def __init__(self, foo):
+        self.foo = foo
+
+try:
+    raise FooException("Foo!")
+except FooException as e:
+    print e.foo
+```
+
+
+
+#### [Catch multiple exceptions in one line (except block)](https://stackoverflow.com/questions/6470428/catch-multiple-exceptions-in-one-line-except-block)
+
+From [Python Documentation](https://docs.python.org/3/tutorial/errors.html#handling-exceptions):
+
+> An except clause may name multiple exceptions as a parenthesized tuple, for example
+
+```
+except (IDontLikeYouException, YouAreBeingMeanException) as e:
+    print(e.args)
+```
+
+
+
+
+
+### Installation
+
+#### [using pip according to the requirements.txt file from a local directory?](https://stackoverflow.com/questions/7225900/how-to-install-packages-using-pip-according-to-the-requirements-txt-file-from-a)
+
+```
+$ pip install -r requirements.txt --no-index --find-links file:///tmp/packages
+```
+
+`--no-index` - Ignore package index (only looking at `--find-links` URLs instead).
+
+`-f, --find-links <URL>` - If a URL or path to an html file, then parse for links to archives. If a local path or `file://` URL that's a directory, then look for archives in the directory listing.
+
+### Database
+
+#### Oracle
+
+本地连接Oracle服务器数据库
+
+https://blog.csdn.net/guimaxingmc/article/details/80360840
+
+乱码问题：
+
+```python
+# 正式执行查询前添加：
+import os
+os.environ['NLS_LANG'] = 'SIMPLIFIED CHINESE_CHINA.AL32UTF8'
+```
 
 
 

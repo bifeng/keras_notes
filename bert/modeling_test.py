@@ -25,6 +25,7 @@ import modeling
 import six
 import tensorflow as tf
 
+# todo tensorflow 如何测试？(测试样例(tf.test.TestCase))
 
 class BertModelTest(tf.test.TestCase):
 
