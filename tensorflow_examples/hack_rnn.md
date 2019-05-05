@@ -104,6 +104,8 @@ True-style: 不将序列截断，当做一个完整的序列进行误差传播�
 
 ### Cell (tf.nn.rnn_cell)
 
+https://github.com/tensorflow/tensorflow/blob/r1.12/tensorflow/python/ops/rnn_cell_impl.py
+
 - BasicRNNCell: The most basic RNN cell.
 - RNNCell: Abstract object representing an RNN cell.
 - BasicLSTMCell: Basic LSTM recurrent network cell.

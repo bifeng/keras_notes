@@ -18,8 +18,20 @@ tf.data module is faster than placeholders and easier to use than queues, and do
 **create Dataset from files**
 
 - tf.data.TextLineDataset(filenames): each of the line in those files will become one entry. It’s good for datasets whose entries are delimited by newlines such as data used for machine translation or data in csv files.
+
+  
+
 - tf.data.FixedLengthRecordDataset(filenames): each of the data point in this dataset is of the same length. It’s good for datasets whose entries are of a fixed length, such as CIFAR or ImageNet.
+
+  
+
 - tf.data.TFRecordDataset(filenames): it’s good to use if your data is stored in tfrecord format.
+
+  ```python
+  tf.data.TFRecordDataset(files, num_parallel_reads=32)
+  ```
+
+  
 
 
 
@@ -76,11 +88,38 @@ dataset = dataset.repeat(100)
 
 dataset = dataset.batch(128)
 
+
+
+
+
+##### apply
+
+```python
+dataset = dataset.apply(tf.contrib.data.shuffle_and_repeat(10000, NUM_EPOCHS))
+dataset = dataset.apply(tf.contrib.data.map_and_batch(lambda x: ...., BATCH_SIZE))
+
+dataset = dataset.apply(tf.contrib.data.prefetch_to_device('\gpu:0'))
+```
+
+
+
+##### map
+
+```python
+# convert each elem of dataset to one_hot vector
 dataset = dataset.map(lambda x: tf.one_hot(x, 10)) 
 
-\# convert each elem of dataset to one_hot vector
+```
 
 
+
+#### Question
+
++ [parallelising tf.data.Dataset.from_generator](https://stackoverflow.com/questions/47086599/parallelising-tf-data-dataset-from-generator) 
+
+  
+
++ 
 
 
 

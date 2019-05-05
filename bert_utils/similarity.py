@@ -9,7 +9,7 @@ import args
 import tokenization
 import modeling
 import optimization
-from preprocess import load_data
+# from preprocess import load_data
 
 
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'
@@ -115,44 +115,93 @@ class SimProcessor(DataProcessor):
         return ['0', '1']
 
 
-class QAProcessor(DataProcessor):
-    def get_train_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            load_data(data_dir, "train"), "train")
+# class QAProcessor(DataProcessor):
+#     def get_train_examples(self, data_dir):
+#         """See base class."""
+#         return self._create_examples(
+#             load_data(data_dir, "train"), "train")
+#
+#     def get_dev_examples(self, data_dir):
+#         """See base class."""
+#         return self._create_examples(
+#             load_data(data_dir, "dev"), "dev")
+#
+#     def get_test_examples(self, data_dir):
+#         """See base class."""
+#         return self._create_examples(
+#             load_data(data_dir, "test"), "test")
+#
+#     def get_sentence_examples(self, questions):  # [(sentence1, sentence2)]
+#         for index, data in enumerate(questions):
+#             guid = 'test-%d' % index
+#             text_a = tokenization.convert_to_unicode(str(data[0]))
+#             text_b = tokenization.convert_to_unicode(str(data[1]))
+#             label = str(0)
+#             yield InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
+#
+#     def get_labels(self):
+#         return ['0', '1']
+#
+#     def _create_examples(self, lines, set_type):
+#         """Creates examples for the training and dev sets."""
+#         examples = []
+#         for (i, line) in lines.iterrows():
+#             guid = "%s-%s" % (set_type, i)
+#             text_a = tokenization.convert_to_unicode(line['text_left'])
+#             text_b = tokenization.convert_to_unicode(line['text_right'])
+#             label = tokenization.convert_to_unicode(str(line['label']))
+#             examples.append(
+#                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+#         return examples
 
-    def get_dev_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            load_data(data_dir, "dev"), "dev")
+"""
+Custom CCKS Processor
+"""
+from pathlib import Path
+import json
+class CCKSProcessor(DataProcessor):
+  """Processor for the entity linking data set."""
 
-    def get_test_examples(self, data_dir):
-        """See base class."""
-        return self._create_examples(
-            load_data(data_dir, "test"), "test")
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_json(data_dir, "train_sim_pairs.json"), "train")
 
-    def get_sentence_examples(self, questions):  # [(sentence1, sentence2)]
-        for index, data in enumerate(questions):
-            guid = 'test-%d' % index
-            text_a = tokenization.convert_to_unicode(str(data[0]))
-            text_b = tokenization.convert_to_unicode(str(data[1]))
-            label = str(0)
-            yield InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label)
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_json(data_dir, "valid_sim_pairs.json"), "dev")
 
-    def get_labels(self):
-        return ['0', '1']
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples( # develop_sim_pairs_for_predict
+        self._read_json(data_dir, "valid_sim_pairs_for_predict.json"), "test")
 
-    def _create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
-        examples = []
-        for (i, line) in lines.iterrows():
-            guid = "%s-%s" % (set_type, i)
-            text_a = tokenization.convert_to_unicode(line['text_left'])
-            text_b = tokenization.convert_to_unicode(line['text_right'])
-            label = tokenization.convert_to_unicode(str(line['label']))
-            examples.append(
-                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-        return examples
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line['text_a'])
+      text_b = tokenization.convert_to_unicode(line['text_b'])
+      if set_type == "test":
+        label = "0"
+      else:
+        label = tokenization.convert_to_unicode(str(line['label']))
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def _read_json(self, data_dir, filename):
+    data_root = Path(data_dir)
+    file_path = data_root.joinpath(filename)
+    with open(file_path,'r', encoding='utf-8') as ff:
+        output = ff.readlines()
+    return [json.loads(i) for i in output]
 
 
 class BertSim:
@@ -163,7 +212,7 @@ class BertSim:
         self.tokenizer = tokenization.FullTokenizer(vocab_file=args.vocab_file, do_lower_case=True)
         self.batch_size = batch_size
         self.estimator = None
-        self.processor = QAProcessor()
+        self.processor = CCKSProcessor()  # QAProcessor()
         tf.logging.set_verbosity(tf.logging.INFO)
 
     def set_mode(self, mode):
@@ -706,7 +755,7 @@ class BertSim:
 if __name__ == '__main__':
     sim = BertSim()
     sim.set_mode(tf.estimator.ModeKeys.TRAIN)
-    sim.train()
+    # sim.train()
     sim.set_mode(tf.estimator.ModeKeys.EVAL)
     sim.eval()
     # sim.set_mode(tf.estimator.ModeKeys.PREDICT)

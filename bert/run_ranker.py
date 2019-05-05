@@ -790,7 +790,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
       output_spec = tf.estimator.EstimatorSpec(
           mode=mode,
           loss=total_loss,
-          eval_metrics=eval_metrics,
+          eval_metric_ops=eval_metrics,
           scaffold=scaffold_fn)
     else:
       output_spec = tf.estimator.EstimatorSpec(
@@ -864,12 +864,17 @@ def main(_):
   # config.gpu_options.per_process_gpu_memory_fraction = gpu_memory_fraction
   # config.log_device_placement = False
 
-  config = tf.ConfigProto(device_count={"CPU": 8},
-                          inter_op_parallelism_threads=1,
-                          intra_op_parallelism_threads=1)
+  # config = tf.ConfigProto(device_count={"CPU": 8},
+  #                         inter_op_parallelism_threads=1,
+  #                         intra_op_parallelism_threads=1)
+
+  config = tf.ConfigProto(log_device_placement=False,
+                          inter_op_parallelism_threads=0,
+                          intra_op_parallelism_threads=0,
+                          allow_soft_placement=True)
 
   run_config = tf.estimator.RunConfig(
-      # session_config=config,
+      session_config=config,
       model_dir=FLAGS.output_dir,
       save_checkpoints_steps=FLAGS.save_checkpoints_steps)
 
@@ -894,8 +899,11 @@ def main(_):
       num_train_steps=num_train_steps,
       num_warmup_steps=num_warmup_steps)
 
+  params = {'batch_size': FLAGS.batch_size}
+
   # If TPU is not available, this will fall back to normal Estimator on CPU or GPU.
   estimator = tf.estimator.Estimator(
+      params=params,
       model_fn=model_fn,
       config=run_config)
 
@@ -918,7 +926,7 @@ def main(_):
     # max_steps -> steps
     tf.logging.info("***** Running train_input_fn finish *****")
 
-    estimator.train(input_fn=train_input_fn(params={'batch_size': FLAGS.batch_size}), max_steps=num_train_steps)
+    estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
     tf.logging.info("***** Running estimator.train finish *****")
 
   if FLAGS.do_eval:
@@ -939,7 +947,7 @@ def main(_):
         is_training=False,
         drop_remainder=False)
 
-    result = estimator.evaluate(input_fn=eval_input_fn(params={'batch_size': FLAGS.batch_size}))
+    result = estimator.evaluate(input_fn=eval_input_fn)
 
     output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
     with tf.gfile.GFile(output_eval_file, "w") as writer:
@@ -969,7 +977,7 @@ def main(_):
         is_training=False,
         drop_remainder=False)
 
-    result = estimator.predict(input_fn=predict_input_fn(params={'batch_size': FLAGS.batch_size}))
+    result = estimator.predict(input_fn=predict_input_fn)
 
     output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
     with tf.gfile.GFile(output_predict_file, "w") as writer:

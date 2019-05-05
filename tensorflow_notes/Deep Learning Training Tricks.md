@@ -5,9 +5,9 @@
 ### tricks
 
 + Writing code for NLP Research, Tutorial at EMNLP 2018, AllenNLP, [site](https://github.com/allenai/writing-code-for-nlp-research-emnlp2018) 
-
 + Must Know Tips/Tricks in Deep Neural Networks, [Xiu-Shen Wei](http://lamda.nju.edu.cn/weixs/) [site](http://lamda.nju.edu.cn/weixs/project/CNNTricks/CNNTricks.html) 
 + [文本分类](https://www.zhihu.com/question/265357659) 
++ [神经网络中，设计loss function有哪些技巧?](https://www.zhihu.com/question/268105631)
 + 
 
 

@@ -2,6 +2,14 @@ source: stackoverflow/github issues
 
 
 
+#### ValueError: Variable w already exists, disallowed. Did you mean to set reuse=True or reuse=tf.AUTO_REUSE in VarScope?
+
+1. maybe the tensorflow graph confict, such as train and predict without separate.
+
+   before build the graph,  reset the graph using `tf.reset_default_graph() `.
+
+
+
 #### convnet problem
 
 ##### [Crash: Could not create cuDNN handle when convnets are used](https://github.com/tensorflow/tensorflow/issues/6698#) #6698

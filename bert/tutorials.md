@@ -52,16 +52,23 @@ case: SciBERT
 
 
 ### QA
+1, how to TPU - GPU ? todo
+
+some suggestion:
+tf.contrib.tpu.TPUEstimator -> tf.estimator.Estimator
+model_fn - tf.contrib.tpu.TPUEstimatorSpec -> tf.estimator.EstimatorSpec
+......
+
+2, the original bert code always build the graph when predict ?
+
+
 1, how to Getting ELMo-like contextual word embedding
 https://github.com/hanxiao/bert-as-service#getting-elmo-like-contextual-word-embedding
 
+
 1, oom
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-2, TPU - GPU
-tf.contrib.tpu.TPUEstimator -> tf.estimator.Estimator  
-model_fn - tf.contrib.tpu.TPUEstimatorSpec -> tf.estimator.EstimatorSpec
-相关调用参数也需要做一些调整
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 3, early stopping
 ```python
 early_stopping_hook = tf.contrib.estimator.stop_if_no_decrease_hook(
