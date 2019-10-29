@@ -22,7 +22,11 @@ https://r2rt.com/recurrent-neural-networks-in-tensorflow-i.html good - need to u
 
 - [ ] 计算过程中，维度变化
 
-  
+   cell state, output state,...
+
+   https://zhuanlan.zhihu.com/p/28919765
+
+   
 
 - [ ] 源码
 
@@ -44,7 +48,11 @@ https://r2rt.com/recurrent-neural-networks-in-tensorflow-i.html good - need to u
 
 - [ ] The difference using initial_state or sequence_length parameter in dynamic_rnn ?
 
-- [x] Is there necessary setting the sequence length for dynamic rnn ?
+- [ ] How to deal with variable sequence in static rnn/dynamic rnn ?
+
+   <https://stackoverflow.com/questions/34670112/how-to-deal-with-batches-with-variable-length-sequences-in-tensorflow?rq=1>
+
+   
 
 - [ ] What's the dropout operation exact doing on the bilstm representations (such as the QA representations before cosine similarity matching) ?
 
@@ -66,11 +74,19 @@ solution: The usual pattern for dealing with very long sequences is therefore to
 
 #### truncated_backpropagation
 
+<https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/ptb_word_lm.py>
+
+<https://github.com/mutux/ptb_lm>
+
 https://r2rt.com/styles-of-truncated-backpropagation.html
 
 https://stats.stackexchange.com/questions/219914/rnns-when-to-apply-bptt-and-or-update-weights
 
+https://stats.stackexchange.com/questions/167482/capturing-initial-patterns-when-using-truncated-backpropagation-through-time-rn
 
+https://github.com/tensorflow/tensorflow/issues/107
+
+https://github.com/tensorflow/tensorflow/issues/23154
 
 Two style of truncated_backpropagation
 
@@ -213,7 +229,39 @@ outputs, state = tf.nn.dynamic_rnn(cell=multi_rnn_cell,
 
 #### bidirectional
 
-tf.nn.bidirectional_dynamic_rnn
+https://tensorflow.google.cn/versions/r1.11/api_docs/python/tf/nn/bidirectional_dynamic_rnn?hl=en
+
+```python
+tf.nn.bidirectional_dynamic_rnn(
+    cell_fw,
+    cell_bw,
+    inputs,
+    sequence_length=None,
+    initial_state_fw=None,
+    initial_state_bw=None,
+    dtype=None,
+    parallel_iterations=None,
+    swap_memory=False,
+    time_major=False,
+    scope=None
+)
+inputs: The RNN inputs. If time_major == False (default), this must be a tensor of shape: [batch_size, max_time, ...], or a nested tuple of such elements. If time_major == True, this must be a tensor of shape: [max_time, batch_size, ...], or a nested tuple of such elements.
+
+-- the actual lengths --
+sequence_length: (optional) An int32/int64 vector, size [batch_size], containing the actual lengths for each of the sequences in the batch. If not provided, all batch entries are assumed to be full sequences; and time reversal is applied from time 0 to max_time for each sequence. 
+
+time_major: The shape format of the inputs and outputs Tensors. If true, these Tensors must be shaped [max_time, batch_size, depth]. If false, these Tensors must be shaped [batch_size, max_time, depth]. Using time_major = True is a bit more efficient because it avoids transposes at the beginning and end of the RNN calculation. However, most TensorFlow data is batch-major, so by default this function accepts input and emits output in batch-major form.
+```
+
+Returns:
+
+A tuple (**outputs**, **output_states**) where: 
+
++ **outputs**: A tuple (output_fw, output_bw) containing the forward and the backward rnn output `Tensor`. 
+
+It returns a tuple instead of a single concatenated `Tensor`, unlike in the `bidirectional_rnn`.
+
+* **output_states**: A tuple (output_state_fw, output_state_bw) containing the forward and the backward final states of bidirectional rnn.
 
 
 
@@ -359,6 +407,34 @@ https://stackoverflow.com/questions/39734146/whats-the-difference-between-tensor
 `tf.nn.rnn` creates an unrolled graph for a fixed RNN length. That means, if you call `tf.nn.rnn` with inputs having 200 time steps you are creating a static graph with 200 RNN steps. First, graph creation is slow. Second, you’re unable to pass in longer sequences (> 200) than you’ve originally specified.
 
 `tf.nn.dynamic_rnn` solves this. It uses a `tf.While` loop to dynamically construct the graph when it is executed. That means graph creation is faster and you can feed batches of variable size.
+
+#### when to use the outputs or output_states (the final state) ?
+
+The `output` tensor holds the outputs of *all* cells, so it doesn't ignore the zeros. 
+
+let's call it h, has all outputs at each time steps (i.e. h_1, h_2, etc).  shape is (batch_size,sequence_length,hidden_size)
+
+
+
+
+
+The `state` is a convenient tensor that holds the last *actual* RNN state, ignoring the zeros. 
+
+final_state, the last output for each element of the batch. shape is (batch_size,hidden_size)
+
+Depending on your case, the state may or may not be useful. 
+
+For example, if you have very long sequences, you may not want/be able to processes them in a single batch, and you may need to split them into several subsequences. If you ignore the `state`, then whenever you give a new subsequence it will be as if you are beginning a new one; if you remember the state, however (e.g. outputting it or storing it in a variable), you can feed it back later (through the `initial_state` parameter of `tf.nn.dynamic_rnn`) in order to correctly keep track of the state of the RNN, and only reset it to the initial state (generally all zeros) after you have completed the whole sequences. The shape of `state` can vary depending on the RNN cell that you are using, but, in general, you have some state for each of the examples (one or more tensors with size `batch_size`x`state_size`, where `state_size` depends on the cell type and size).
+
+For example, use the final state as the representation of sentence.
+
+
+
+https://stackoverflow.com/questions/44162432/analysis-of-the-output-from-tf-nn-dynamic-rnn-tensorflow-function
+
+
+
+
 
 
 

@@ -389,6 +389,7 @@ def layer_norm(input_tensor, name=None):
     https://arxiv.org/abs/1607.06450.
     Can be used as a normalizer function for conv2d and fully_connected.
   """  # todo what's the advantage of layer_norm?
+       # scale large weight and keep the same distribution!
   return tf.contrib.layers.layer_norm(
       inputs=input_tensor, begin_norm_axis=-1, begin_params_axis=-1, scope=name)
 

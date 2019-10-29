@@ -9,7 +9,6 @@ The output tensor holds the outputs of all cells, so it doesn't ignore the zeros
 That's the reason for returning both of them.
 
 https://stats.stackexchange.com/questions/330176/what-is-the-output-of-a-tf-nn-dynamic-rnn
-https://stackoverflow.com/questions/41273361/get-the-last-output-of-a-dynamic-rnn-in-tensorflow
 https://r2rt.com/recurrent-neural-networks-in-tensorflow-i.html
 """
 
@@ -44,8 +43,24 @@ with tf.Session() as sess:
                                      feed_dict={X: X_batch, seq_length: seq_length_batch})
 
   print(outputs_val)
-  print()
+  print('-------------')
   print(states_val)
+
+"""
+[[[-0.31307542  0.7681713  -0.06069343 -0.13103582  0.38810092]
+  [ 0.90247655  0.99998987  0.9663651  -0.9997993   0.99775183]]
+ [[-0.06315047  0.9962653   0.55165243 -0.95261353  0.9524636 ]
+  [ 0.          0.          0.          0.          0.        ]]
+ [[ 0.19495435  0.9999468   0.8623077  -0.99846804  0.99731416]
+  [ 0.6090871   0.9999036   0.91982526 -0.9891903   0.98514694]]
+ [[ 0.9792592   0.99914706 -0.40777573 -0.9994195   0.994314  ]
+  [ 0.51258177  0.9659592   0.5879667  -0.91654384  0.63013095]]]
+ -------------
+[[ 0.90247655  0.99998987  0.9663651  -0.9997993   0.99775183]
+ [-0.06315047  0.9962653   0.55165243 -0.95261353  0.9524636 ]
+ [ 0.6090871   0.9999036   0.91982526 -0.9891903   0.98514694]
+ [ 0.51258177  0.9659592   0.5879667  -0.91654384  0.63013095]]
+"""
 
 #################################################
 """

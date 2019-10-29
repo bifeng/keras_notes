@@ -157,6 +157,62 @@ https://stackoverflow.com/questions/37326002/is-it-possible-to-make-a-trainable-
 
 
 
+##### how to make a trainable variable not trainable ?
+
+https://stackoverflow.com/questions/37326002/is-it-possible-to-make-a-trainable-variable-not-trainable
+
+https://stackoverflow.com/questions/35298326/freeze-some-variables-scopes-in-tensorflow-stop-gradient-vs-passing-variables
+
+Set the variable's trainable property to `False`. But the variable `'weights'` is still in the output of `tf.trainable_variables`.
+
+```
+weight_var = tf.get_variable('weights', trainable = False)
+```
+
+1. first solution
+
+   When calling the `minimize` method of the optimizer (see [doc.](https://www.tensorflow.org/api_guides/python/train#Optimizer)), you can pass a `var_list=[...]` as argument with the variables you want to optimizer.
+
+   For instance, if you want to freeze all the layers of VGG except the last two, you can pass the weights of the last two layers in `var_list`.
+
+   ```python
+   tvars = tf.trainable_variables()
+   g_vars = [var for var in tvars if 'g_' in var.name]
+   g_trainer = tf.train.AdamOptimizer(0.0001).minimize(g_loss, var_list=g_vars)
+   # or
+   optimizer = tf.train.AdamOptimizer()
+   train_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                         "scope/prefix/for/second/vars")  
+   train_op = optimizer.minimize(cost, var_list=train_vars)
+   ```
+
+2. Second solution
+
+   You can use a `tf.train.Saver()` to save variables and restore them later (see [this tutorial](https://www.tensorflow.org/programmers_guide/variables)).
+
+   - First you train your entire VGG model with **all trainable** variables. You save them in a checkpoint file by calling `saver.save(sess, "/path/to/dir/model.ckpt")`.
+   - Then (in another file) you train the second version with **non trainable** variables. You load the variables previously stored with `saver.restore(sess, "/path/to/dir/model.ckpt")`.
+
+   Optionally, you can decide to save only some of the variables in your checkpoint file. See the [doc](https://www.tensorflow.org/api_guides/python/state_ops#Saver) for more info.
+
+3. Third solution
+
+   You can do `trainable_collection = tf.get_collection_ref(tf.GraphKeys.TRAINABLE_VARIABLES)` to get a reference for the collection of trainable variables, which is a python list, and then use `pop` with the right index to remove the variable from there.
+
+   ```
+   #gets a reference to the list containing the trainable variables
+   trainable_collection = tf.get_collection_ref(tf.GraphKeys.TRAINABLE_VARIABLES)
+   variables_to_remove = list()
+   for vari in trainable_collection:
+       #uses the attribute 'name' of the variable
+       if vari.name=="batch_normalization/gamma:0" or vari.name=="batch_normalization/beta:0":
+           variables_to_remove.append(vari)
+   for rem in variables_to_remove:
+       trainable_collection.remove(rem)
+   ```
+
+
+
 
 
 ### operation
@@ -503,7 +559,279 @@ def clip_by_global_norm(t_list, clip_norm, use_norm=None, name=None):
 
 more:https://www.jianshu.com/p/cf235861311b
 
+refer: https://stackoverflow.com/questions/47034888/how-to-choose-cross-entropy-loss-in-tensorflow?rq=1
+
 todo:<br>公式 
+
+
+
+In functional sense, the [sigmoid is a partial case of the softmax function](https://stats.stackexchange.com/q/233658/130598), when the number of classes equals 2. 
+
+###### sigmoid functions family
+
+sigmoid allows to deal with non-exclusive labels (a.k.a. *multi-labels*)
+
+- [`tf.nn.sigmoid_cross_entropy_with_logits`](https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits)
+
+- [`tf.nn.weighted_cross_entropy_with_logits`](https://www.tensorflow.org/api_docs/python/tf/nn/weighted_cross_entropy_with_logits)
+
+  It allows to set *class weights* (remember, the classification is binary), i.e. make positive errors larger than negative errors. This is useful when the training data is unbalanced.
+
+- [`tf.losses.sigmoid_cross_entropy`](https://www.tensorflow.org/api_docs/python/tf/losses/sigmoid_cross_entropy)
+
+  It allows to set the *in-batch weights*, i.e. make some examples more important than others.
+
+Application:
+
+binary classification
+
+multi-label classification - The labels must be <u>one-hot encoded</u> or can contain soft class probabilities.
+
+
+
+###### softmax functions family
+
+softmax deals with exclusive classes 
+
+- [`tf.nn.softmax_cross_entropy_with_logits_v2`](https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits_v2)
+
+- [`tf.losses.softmax_cross_entropy`](https://www.tensorflow.org/api_docs/python/tf/losses/softmax_cross_entropy)
+
+  It allows to set the *in-batch weights*, i.e. make some examples more important than others. 
+
+Application:
+
+binary classification
+
+multi-class classification - The labels must be <u>one-hot encoded</u> or can contain soft class probabilities: a particular example can belong to class A with 50% probability and class B with 50% probability. Note that strictly speaking it doesn't mean that it belongs to both classes, but one can interpret the probabilities this way. (labels must have the shape [batch_size, num_classes] and dtype float32 or float64.)
+
+###### sparse functions family
+
+- [`tf.nn.sparse_softmax_cross_entropy_with_logits`](https://www.tensorflow.org/api_docs/python/tf/nn/sparse_softmax_cross_entropy_with_logits)
+
+- [`tf.losses.sparse_softmax_cross_entropy`](https://www.tensorflow.org/api_docs/python/tf/losses/sparse_softmax_cross_entropy)
+
+  It allows to set the in-batch weights
+
+Application:
+
+binary classification
+
+multi-classification - The difference is in labels encoding: the classes are specified as integers (class index), not one-hot vectors. Obviously, <u>this doesn't allow soft classes (???)</u>, but it can save some memory when there are thousands or millions of classes. However, note that `logits` argument must still contain logits per each class, thus it consumes at least `[batch_size, classes]` memory. (labels must have the shape [batch_size] and the dtype int32 or int64. Each label is an int in range `[0, num_classes-1]`.)
+
+###### sampled softmax functions family
+
+- [`tf.nn.sampled_softmax_loss`](https://www.tensorflow.org/api_docs/python/tf/nn/sampled_softmax_loss)
+- [`tf.contrib.nn.rank_sampled_softmax_loss`](https://www.tensorflow.org/api_docs/python/tf/contrib/nn/rank_sampled_softmax_loss)
+- [`tf.nn.nce_loss`](https://www.tensorflow.org/api_docs/python/tf/nn/nce_loss)
+
+These functions provide another alternative for dealing with huge number of classes. Instead of computing and comparing an exact probability distribution, they compute a loss estimate from a random sample.
+
+The arguments `weights` and `biases` specify a separate fully-connected layer that is used to compute the logits for a chosen sample.
+
+Like above, `labels` are not one-hot encoded, but have the shape `[batch_size, num_true]`.
+
+Sampled functions are only suitable for training. In test time, it's recommended to use a standard `softmax` loss (either sparse or one-hot) to get an actual distribution.
+
+Another alternative loss is `tf.nn.nce_loss`, which performs *noise-contrastive estimation* (if you're interested, see this [very detailed discussion](https://datascience.stackexchange.com/q/13216/18375)). I've included this function to the softmax family, because NCE guarantees approximation to softmax in the limit.
+
+
+
+###### example
+
+多分类的几种方式
+
+1. softmax_cross_entropy_with_logits
+
+   输入
+
+   ```
+   self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
+   ```
+
+   输出
+
+   ```
+   self.scores = tf.nn.xw_plus_b(self.h_drop, W, b, name="scores")
+   self.predictions = tf.argmax(self.scores, 1, name="predictions")
+   ```
+
+   loss
+
+   ```python
+   losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
+   self.loss = tf.reduce_mean(losses)
+   ```
+
+   accuracy
+
+   ```
+   correct_predictions = tf.equal(self.predictions, tf.argmax(self.input_y, 1))
+   self.accuracy = tf.reduce_mean(tf.cast(correct_predictions, "float"), name="accuracy")
+   ```
+
+2. softmax_cross_entropy_with_logits
+
+   输入
+
+   ```
+   self.y = tf.placeholder(name='y', shape=(None,), dtype=tf.int32)
+   ```
+
+   输出
+
+   ```
+   self.logits = tf.matmul(pool_drop, self.w) + self.b
+   self.probs = tf.nn.softmax(self.logits)
+   self.predict = tf.argmax(name="predictions", input=self.probs, axis=1)
+   ```
+
+   loss
+
+   ```
+   labels_one_hot = tf.one_hot(self.y, self.class_num)
+   loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels_one_hot,
+                                                  logits=self.logits)
+   ```
+
+   accuracy
+
+   ```
+   correct_prediction = tf.equal(tf.cast(self.predict, tf.int32), self.y)
+   self.accuracy = tf.reduce_mean(name="accuracy", input_tensor=tf.cast(correct_prediction, tf.float32))
+   ```
+
+3. sparse_softmax_cross_entropy_with_logits
+
+   输入
+
+   ```
+   self.input_y = tf.placeholder(tf.int32, [None,],name="input_y")
+   ```
+
+   输出
+
+   ```
+   self.predictions = tf.argmax(self.logits, 1, name="predictions")
+   ```
+
+   loss
+
+   ```
+   losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.input_y,logits=self.logits)
+   loss=tf.reduce_mean(losses)
+   ```
+
+   accuracy
+
+   ```
+   correct_prediction = tf.equal(tf.cast(self.predictions,tf.int32), self.input_y)
+   self.accuracy =tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="Accuracy")
+   ```
+
+
+
+多标签方式：
+
+1. sigmoid_cross_entropy_with_logits
+
+   输入
+
+```
+self.input_y_multilabel = tf.placeholder(tf.float32,[None,self.num_classes], name="input_y_multilabel")
+```
+
+​	输出
+
+```
+self.possibility=tf.nn.sigmoid(self.logits)
+```
+
+​	loss
+
+```
+losses=tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y_multilabel, logits=self.logits)
+losses=tf.reduce_sum(losses,axis=1)   #shape=(?,). loss for all data in the batch
+loss=tf.reduce_mean(losses)   #shape=().   average loss in the batch
+```
+
+
+
+注意：
+
+多标签分类，通常label需要二值化处理：
+
+```python
+from sklearn.preprocessing import MultiLabelBinarizer
+y = [[2,3,4],[2],[0,1,3],[0,1,2,3,4],[0,1,2],[0,1,2]]
+MultiLabelBinarizer().fit_transform(y)
+array([[0, 0, 1, 1, 1],
+       [0, 0, 1, 0, 0],
+       [1, 1, 0, 1, 0],
+       [1, 1, 1, 1, 1],
+       [1, 1, 1, 0, 0],
+       [1, 1, 1, 0, 0]])
+```
+
+
+
+示例：y_true/y_pred是每个样本的类标签
+
+```python
+y_true = [0,1,3]
+y_pred = [1,2,1]
+
+from sklearn.metrics import log_loss
+from sklearn.preprocessing import OneHotEncoder
+
+one_hot = OneHotEncoder(n_values=4, sparse=False)
+
+y_true = one_hot.fit_transform([0,1,3])
+y_pred = one_hot.fit_transform([1,2,1])
+log_loss(y_true, y_pred)
+```
+
+
+
+示例：label是每个样本的类标签，prob是每个样本属于各类的概率
+
+```python
+from tensorboard import summary as summary_lib
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import OneHotEncoder
+
+def pr_curve(label_list, prob_list, class_number):
+    truth = np.array(label_list).reshape(-1,1)
+
+    lb = OneHotEncoder(n_values=class_number, sparse=False)
+    lb.fit(truth)
+
+    labels = lb.transform(truth)
+
+    summary_proto = summary_lib.pr_curve_pb(
+        name='PR_Curve',
+        predictions=np.array(prob_list),
+        labels=labels)
+    return summary_proto
+
+
+def multiclass_roc_auc_score(truth, prob, average, class_number):
+    truth = np.array(truth).reshape(-1,1)
+    prob = np.array(prob)
+
+    lb = OneHotEncoder(n_values=class_number, sparse=False)
+    lb.fit(truth)
+
+    truth = lb.transform(truth)
+
+    return roc_auc_score(truth, prob, average=average)
+```
+
+
+
+###### source code
+
+
 
 ```python
 def softmax_cross_entropy_with_logits(
@@ -633,9 +961,17 @@ def weighted_cross_entropy_with_logits(targets, logits, pos_weight, name=None):
 
 
 
-##### accuracy
+##### metric
+
+###### accuracy
+
+https://stackoverflow.com/questions/46409626/how-to-properly-use-tf-metrics-accuracy
+
+
 
 tf.metrics.accuracy
+
+<https://github.com/tensorflow/docs/blob/r1.0/site/en/api_docs/python/tf/metrics/accuracy.md>
 
 ```python
 def accuracy(labels,
@@ -669,10 +1005,197 @@ def accuracy(labels,
 
 
 
+###### auc
+
+the idea of streaming
+
+https://www.tensorflow.org/api_docs/python/tf/metrics/auc
+
+https://tensorflow.google.cn/api_docs/python/tf/contrib/metrics/streaming_auc
+
+https://stackoverflow.com/questions/39435341/how-to-calculate-auc-with-tensorflow
+
+https://stackoverflow.com/questions/44422508/tensorflow-attempting-to-use-uninitialized-value-auc-auc-auc-false-positives
+
+
+
+###### multi-class
+
+calculate metric with streaming data:
+
+<https://github.com/guillaumegenthial/tf_metrics/blob/master/tf_metrics/__init__.py>
+
+<https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/metrics_impl.py>
+
+
+
+[Support for multi-class roc_auc scores](https://github.com/scikit-learn/scikit-learn/issues/3298#) #3298
+
+https://stackoverflow.com/questions/39685740/calculate-sklearn-roc-auc-score-for-multi-class
+
+
+
+```python
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import LabelBinarizer
+
+def multiclass_roc_auc_score(truth, pred, average="macro"):
+
+    lb = LabelBinarizer()
+    lb.fit(truth)
+
+    truth = lb.transform(truth)
+    pred = lb.transform(pred)
+
+    return roc_auc_score(truth, pred, average=average)
+```
+
+```python
+import pandas as pd
+import numpy as np
+from scipy import interp
+
+from  sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import LabelBinarizer
+
+def class_report(y_true, y_pred, y_score=None, average='micro'):
+    if y_true.shape != y_pred.shape:
+        print("Error! y_true %s is not the same shape as y_pred %s" % (
+              y_true.shape,
+              y_pred.shape)
+        )
+        return
+
+    lb = LabelBinarizer()
+
+    if len(y_true.shape) == 1:
+        lb.fit(y_true)
+
+    #Value counts of predictions
+    labels, cnt = np.unique(
+        y_pred,
+        return_counts=True)
+    n_classes = len(labels)
+    pred_cnt = pd.Series(cnt, index=labels)
+
+    metrics_summary = precision_recall_fscore_support(
+            y_true=y_true,
+            y_pred=y_pred,
+            labels=labels)
+
+    avg = list(precision_recall_fscore_support(
+            y_true=y_true, 
+            y_pred=y_pred,
+            average='weighted'))
+
+    metrics_sum_index = ['precision', 'recall', 'f1-score', 'support']
+    class_report_df = pd.DataFrame(
+        list(metrics_summary),
+        index=metrics_sum_index,
+        columns=labels)
+
+    support = class_report_df.loc['support']
+    total = support.sum() 
+    class_report_df['avg / total'] = avg[:-1] + [total]
+
+    class_report_df = class_report_df.T
+    class_report_df['pred'] = pred_cnt
+    class_report_df['pred'].iloc[-1] = total
+
+    if not (y_score is None):
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for label_it, label in enumerate(labels):
+            fpr[label], tpr[label], _ = roc_curve(
+                (y_true == label).astype(int), 
+                y_score[:, label_it])
+
+            roc_auc[label] = auc(fpr[label], tpr[label])
+
+        if average == 'micro':
+            if n_classes <= 2:
+                fpr["avg / total"], tpr["avg / total"], _ = roc_curve(
+                    lb.transform(y_true).ravel(), 
+                    y_score[:, 1].ravel())
+            else:
+                fpr["avg / total"], tpr["avg / total"], _ = roc_curve(
+                        lb.transform(y_true).ravel(), 
+                        y_score.ravel())
+
+            roc_auc["avg / total"] = auc(
+                fpr["avg / total"], 
+                tpr["avg / total"])
+
+        elif average == 'macro':
+            # First aggregate all false positive rates
+            all_fpr = np.unique(np.concatenate([
+                fpr[i] for i in labels]
+            ))
+
+            # Then interpolate all ROC curves at this points
+            mean_tpr = np.zeros_like(all_fpr)
+            for i in labels:
+                mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+            # Finally average it and compute AUC
+            mean_tpr /= n_classes
+
+            fpr["macro"] = all_fpr
+            tpr["macro"] = mean_tpr
+
+            roc_auc["avg / total"] = auc(fpr["macro"], tpr["macro"])
+
+        class_report_df['AUC'] = pd.Series(roc_auc)
+
+    return class_report_df
+
+
+report_with_auc = class_report(
+    y_true=y_test, 
+    y_pred=model.predict(X_test), 
+    y_score=model.predict_proba(X_test))
+
+print(report_with_auc)
+```
+
+```py
+             precision    recall  f1-score  support    pred       AUC
+0             0.262774  0.553846  0.356436    130.0   274.0  0.766477
+1             0.405405  0.333333  0.365854    135.0   111.0  0.773974
+2             0.367347  0.150000  0.213018    120.0    49.0  0.817341
+3             0.350993  0.424000  0.384058    125.0   151.0  0.803364
+4             0.379310  0.447154  0.410448    123.0   145.0  0.802436
+5             0.525000  0.182609  0.270968    115.0    40.0  0.680870
+6             0.362573  0.488189  0.416107    127.0   171.0  0.855768
+7             0.330189  0.299145  0.313901    117.0   106.0  0.766526
+8             0.328571  0.407080  0.363636    113.0   140.0  0.754812
+9             0.571429  0.248276  0.346154    145.0    63.0  0.769100
+avg / total   0.390833  0.354400  0.345438   1250.0  1250.0  0.776071
+```
+
+
+
 ##### question
 
-+ Backpropagation will happen into both `logits` and `labels` ?
-+ 
++ Why the backpropagation happens into both logits and labels is useful ?
+
+  In supervised learning one doesn't need to backpropagate to labels. They are considered fixed ground truth and only the weights need to be adjusted to match them.
+
+  But in some cases, the labels themselves *may* come from a differentiable source, another network. One example might be [adversarial learning](https://en.wikipedia.org/wiki/Generative_adversarial_network). In this case, both networks might benefit from the error signal. That's the reason why `tf.nn.softmax_cross_entropy_with_logits_v2` was [introduced](https://github.com/tensorflow/tensorflow/commit/d60f6513232bd49b658c188c0597dd119e9a52d8). Note that when the labels are the placeholders (which is also typical), there is no difference if the gradient through flows or not, because there are no variables to apply gradient to.
+
+  https://stats.stackexchange.com/questions/327348/how-is-softmax-cross-entropy-with-logits-different-from-softmax-cross-entropy-wi
+
++ how to calculate accuracy for multi-label classification ?
+
+  https://stackoverflow.com/questions/37746670/tensorflow-multi-label-accuracy-calculation?rq=1
+
++ nce loss
+
+  https://datascience.stackexchange.com/questions/13216/intuitive-explanation-of-noise-contrastive-estimation-nce-loss
+
+  
 
 
 
@@ -680,19 +1203,191 @@ def accuracy(labels,
 
 ### useful functions
 
+#### embedding_lookup/gather
+
+https://stackoverflow.com/questions/34870614/what-does-tf-nn-embedding-lookup-function-do
+
+In its simplest form, it is similar to `tf.gather`. It returns the elements of `params` according to the indexes specified by `ids`.
+
+But `embedding_lookup` is more than that. The `params` argument can be a **list** of tensors, rather than a single tensor.
+
+...
+
+#### matmul/multiply/tensordot/einsum
+
+https://tensorflow.google.cn/versions/r1.9/api_docs/python/tf/matmul?hl=en
+
+matmul
+
+三维矩阵乘法： tf.matmul(a,b)
+
+a -> (W, H, L)  b-> (W, L, H)
+
+
+
+multiply
+
+
+
+
+
+tensordot
+
+https://tensorflow.google.cn/versions/r1.9/api_docs/python/tf/tensordot?hl=en
+
+```python
+tf.tensordot(
+    a,
+    b,
+    axes,
+    name=None
+)
+```
+
+Tensor contraction of a and b along specified axes.
+
+This operation corresponds to `numpy.tensordot(a, b, axes)`.
+
+Example 1: When `a` and `b` are matrices (order 2), the case `axes = 1` is equivalent to matrix multiplication.
+
+Example 2: When `a` and `b` are matrices (order 2), the case `axes = [[1], [0]]` is equivalent to matrix multiplication.
+
+Example 3: Suppose that aijk and blmn represent two tensors of order 3. Then, `contract(a, b, [[0], [2]])` is the order 4 tensor cjklm whose entry corresponding to the indices (j,k,l,m) is given by:
+
+cjklm=∑iaijkblmi.
+
+In general, `order(c) = order(a) + order(b) - 2*len(axes[0])`.
+
+
+
+einsum
+
+https://tensorflow.google.cn/versions/r1.8/api_docs/python/tf/einsum?hl=en
+
+```python
+tf.einsum(
+    equation,
+    *inputs,
+    **kwargs
+)
+```
+
+A generalized contraction between tensors of arbitrary dimension.
+
+
+
+#### slice
+
+https://tensorflow.google.cn/versions/r1.9/api_docs/python/tf/slice?hl=en
+
+```python
+tf.slice(
+    input_,
+    begin,
+    size,
+    name=None
+)
+input_: A Tensor.
+begin: An int32 or int64 Tensor.
+size: An int32 or int64 Tensor.
+name: A name for the operation (optional).
+```
+
+This operation extracts a slice of size `size` from a tensor `input` starting at the location specified by `begin`. 
+
+#### transpose
+
+https://tensorflow.google.cn/versions/r1.11/api_docs/python/tf/transpose?hl=en
+
+```python
+tf.transpose(
+    a,
+    perm=None,
+    name='transpose',
+    conjugate=False
+)
+a: A Tensor.
+perm: A permutation of the dimensions of a.
+name: A name for the operation (optional).
+conjugate: Optional bool. Setting it to True is mathematically equivalent to tf.conj(tf.transpose(input)).
+```
+
+Transposes `a`. Permutes the dimensions according to `perm`.
+
+
+
+#### squeeze
+
+https://tensorflow.google.cn/versions/r1.8/api_docs/python/tf/keras/backend/squeeze?hl=en
+
+```python
+tf.keras.backend.squeeze(
+    x,
+    axis
+)
+x: A tensor or variable.
+axis: Axis to drop.
+```
+
+Removes a 1-dimension from the tensor at index "axis".
+
+
+
 #### get_operations 
 
 tf.get_default_graph().get_operations()
 
 
 
-#### name_scope
+#### name_scope/variable_scope
+
+https://stackoverflow.com/questions/35919020/whats-the-difference-of-name-scope-and-a-variable-scope-in-tensorflow?rq=1
+
+Summary:
+
+`tf.variable_scope()` adds a prefix to the names of all variables (no matter how you create them -`tf.get_variable()` or `tf.Variable()`), ops, constants. 
+
+`tf.name_scope()` ignores variables created with `tf.get_variable()` because it assumes that you know which variable and in which scope you wanted to use.
+
+
+
+This allows us to easily share variables across different parts of the program, even within different name scopes:
+
+```python
+with tf.name_scope("foo"):
+    with tf.variable_scope("var_scope"):
+        v = tf.get_variable("var", [1])
+with tf.name_scope("bar"):
+    with tf.variable_scope("var_scope", reuse=True):
+        v1 = tf.get_variable("var", [1])
+assert v1 == v
+print(v.name)   # var_scope/var:0
+print(v1.name)  # var_scope/var:0
+```
+
+With variable scope, one can define separate scopes for re-usable variables that are not affected by the current name scope used to define operations.
+
+
+
+A good documentation on [Sharing variables](https://www.tensorflow.org/programmers_guide/variable_scope) tells you that
+
+> `tf.variable_scope()`: Manages namespaces for names passed to `tf.get_variable()`.
+
+The same documentation provides a more details how does Variable Scope work and when it is useful.
+
+
+
+
+
+name scope
 
 **Group nodes together** **with tf.name_scope(name)**
 
 
 
-#### variable_scope
+
+
+variable scope
 
 Variable scope facilitates variable sharing.
 
@@ -775,7 +1470,33 @@ The standard library uses various well-known names to collect and retrieve value
 
 
 
-## 
+#### How to get tensor or op by name ?
+
+```py
+import tensorflow as tf
+
+c = tf.constant([[1.0, 2.0], [3.0, 4.0]])
+d = tf.constant([[1.0, 1.0], [0.0, 1.0]])
+e = tf.matmul(c, d, name='example')
+
+with tf.Session() as sess:
+    test =  sess.run(e)
+    print e.name #example:0
+    test = tf.get_default_graph().get_tensor_by_name("example:0")
+    print test #Tensor("example:0", shape=(2, 2), dtype=float32)
+```
+
+
+
+ You can use the [`tf.Graph.get_operation_by_name()`](https://www.tensorflow.org/api_docs/python/tf/Graph#get_operation_by_name) method to get a `tf.Operation` by name. For example, to get an operation called `"enqueue"` from the default graph:
+
+```py
+op = tf.get_default_graph().get_operation_by_name("enqueue")
+```
+
+https://stackoverflow.com/questions/36612512/tensorflow-how-to-get-a-tensor-by-name?rq=1
+
+https://stackoverflow.com/questions/42685994/how-to-get-a-tensorflow-op-by-name
 
 ## Debugger
 
@@ -858,7 +1579,9 @@ tf.feature_column.input_layer
 
 ## nn
 
-### tf.nn.conv2d
+### tf.nn.conv2d/tf.layers.conv2d
+
+tf.nn.conv2d
 
 [Possibly buffer overflow in tf.nn.conv2d on GPU #24196](https://github.com/tensorflow/tensorflow/issues/24196)
 
@@ -883,7 +1606,63 @@ https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/ops/nn_op
 
 https://stackoverflow.com/questions/34835503/tensorflow-where-is-tf-nn-conv2d-actually-executed
 
+https://stackoverflow.com/questions/34619177/what-does-tf-nn-conv2d-do-in-tensorflow?rq=1
+
 [【TensorFlow】tf.nn.conv2d是怎样实现卷积的？](https://blog.csdn.net/mao_xiao_feng/article/details/53444333)
+
+
+
+tf.layers.conv2d
+
+
+
+
+
+tf.nn.conv2d vs tf.layers.conv2d
+
+https://stackoverflow.com/questions/42785026/tf-nn-conv2d-vs-tf-layers-conv2d
+
+tf.nn.conv2d
+
+  `filter`: A Tensor. Must have the same type as input. A 4-D tensor of shape [filter_height, filter_width,              in_channels, out_channels]
+
+```
+def conv2d(input, filter, strides, padding, use_cudnn_on_gpu=True, data_format="NHWC", dilations=[1, 1, 1, 1], name=None):
+```
+
+tf.layers.conv2d
+
+  `filters`: Integer, the dimensionality of the output space (i.e. the number of filters in the convolution).
+
+```
+def conv2d(inputs,
+           filters,
+           kernel_size,
+           strides=(1, 1),
+           padding='valid',
+           data_format='channels_last',
+           dilation_rate=(1, 1),
+           activation=None,
+           use_bias=True,
+           kernel_initializer=None,
+           bias_initializer=init_ops.zeros_initializer(),
+           kernel_regularizer=None,
+           bias_regularizer=None,
+           activity_regularizer=None,
+           kernel_constraint=None,
+           bias_constraint=None,
+           trainable=True,
+           name=None,
+           reuse=None):
+```
+
+I would use tf.nn.conv2d when loading a pretrained model (example code: <https://github.com/ry/tensorflow-vgg16>), and tf.layers.conv2d for a model trained from scratch.
+
+
+
+
+
+
 
 ### tf.nn.dropout
 
@@ -1118,6 +1897,29 @@ https://tensorflow.google.cn/api_docs/python/tf/train/Scaffold
 tf.estimator.ModeKeys.PREDICT
 
 
+
+#### add extra metrics
+
+You can try to do by creating a logging hook and passing it into to estimator run.
+
+In the body of `model_fn` function for your estimator:
+
+```
+logging_hook = tf.train.LoggingTensorHook({"loss" : loss, 
+    "accuracy" : accuracy}, every_n_iter=10)
+
+# Rest of the function
+
+return tf.estimator.EstimatorSpec(
+    ...params...
+    training_hooks = [logging_hook])
+```
+
+EDIT:
+
+To see the output you must also set logging verbosity high enough (unless its your default): `tf.logging.set_verbosity(tf.logging.INFO)`
+
+<https://stackoverflow.com/questions/45353389/printing-extra-training-metrics-with-tensorflow-estimator?noredirect=1&lq=1>
 
 ### RunConfig
 

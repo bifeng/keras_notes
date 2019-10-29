@@ -22,7 +22,7 @@ python manage.py runserver 0.0.0.0:8000
 
 [what-is-the-difference-between-0-0-0-0-127-0-0-1-and-localhost](https://stackoverflow.com/questions/20778771/what-is-the-difference-between-0-0-0-0-127-0-0-1-and-localhost) :star:
 
-当我们在服务器搭建了一个web服务器的时候，如果监听的端口是127.0.0.1：端口号的时候，那么这个web服务器只可以在服务器本地访问了，在别的地方进行访问是不行的。
+当我们在服务器搭建了一个web服务器的时候，如果监听的端口是`127.0.0.1:端口号`的时候，那么这个web服务器只可以在服务器本地访问了，在别的地方进行访问是不行的。
 
 一个服务有多个IP地址（192.168.1.2和10.1.1.12），如果设置的监听地址是0.0.0.0，那么我们无论是通过192.168.1.2还是10.1.1.12都是可以访问该服务的。
 
@@ -191,6 +191,22 @@ requests.get(apiurl, data)
 
 
 
+#### Cache support share cross-process ?
+
+[Local-memory caching](https://docs.djangoproject.com/en/2.2/topics/cache/#local-memory-caching)
+
+Note that each process will have its own private cache instance, which means no cross-process caching is possible. This obviously also means the local memory cache isn’t particularly memory-efficient, so it’s probably not a good choice for production environments.
+
+
+
+Cache support share cross-process ?
+
+http://www.grantjenks.com/docs/diskcache/tutorial.html
+
+It provide an efficient and safe means of cross-thread and cross-process communication.
+
+
+
 #### csrf
 
 https://docs.djangoproject.com/en/2.1/ref/csrf/
@@ -229,7 +245,15 @@ Above API will allow a post call without adding csrf parameter in it. Otherwise 
 
 #### uwsgi
 
+
+
 https://uwsgi-docs-additions.readthedocs.io/en/latest/Options.html
+
+
+
+##### [使用uWSGI的spooler做异步任务](https://www.kawabangga.com/posts/3101)
+
+[使用uwsgi实现异步任务](https://knktc.com/2018/07/24/uwsgi-spooler-as-async-queue/)
 
 
 
@@ -244,4 +268,20 @@ more refer: [使用uWSGI和nginx如何设置连接超时时间](https://www.jian
 
 
 ##### [uWSGI request timeout in Python](https://stackoverflow.com/questions/24127601/uwsgi-request-timeout-in-python)
+
+
+
+##### Start uWSGI without preload some models?
+
+uwsgi.log - `spawned uWSGI http 1 `
+
+Add following lines in `app/wsgi.py`:
+
+```python
+import app.urls
+```
+
+
+
+
 

@@ -1,5 +1,11 @@
 refer: CS20si
 
+<https://tensorflow.google.cn/guide/performance/datasets>
+
+
+
+
+
 tf.data module is faster than placeholders and easier to use than queues, and doesn’t crash. (queues are notorious for being difficult to use and prone to crashing.)
 
 

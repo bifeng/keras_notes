@@ -145,7 +145,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
      next_sentence_log_probs) = get_next_sentence_output(
          bert_config, model.get_pooled_output(), next_sentence_labels)
 
-    # todo total_loss
+    # todo optimize the sum of two loss, when it's better to use the sum of loss ?
     total_loss = masked_lm_loss + next_sentence_loss
 
     tvars = tf.trainable_variables()

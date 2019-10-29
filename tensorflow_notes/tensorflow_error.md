@@ -2,11 +2,273 @@ source: stackoverflow/github issues
 
 
 
-#### ValueError: Variable w already exists, disallowed. Did you mean to set reuse=True or reuse=tf.AUTO_REUSE in VarScope?
+##### KeyError: "The name 'image_tensor:0' refers to a Tensor which does not exist. The operation, 'image_tensor', does not exist in the graph."
 
-1. maybe the tensorflow graph confict, such as train and predict without separate.
+<https://yunyaniu.blog.csdn.net/article/details/82903223>
 
-   before build the graph,  reset the graph using `tf.reset_default_graph() `.
+
+
+#### session/graph in multiple thread
+
+https://tensorflow.google.cn/api_docs/python/tf/Session#as_default
+
+https://tensorflow.google.cn/api_docs/python/tf/Graph#as_default
+
+
+
+##### Case 1
+
+```python
+import tensorflow as tf
+
+graph1 = tf.Graph()
+graph2 = tf.Graph()
+
+with graph1.as_default() as graph:
+  a = tf.constant(0, name='a')
+  graph1_init_op = tf.global_variables_initializer()
+
+with graph2.as_default() as graph:
+  a = tf.constant(1, name='a')
+  graph2_init_op = tf.global_variables_initializer()
+
+sess1 = tf.Session(graph=graph1)
+sess2 = tf.Session(graph=graph2)
+sess1.run(graph1_init_op)
+sess2.run(graph2_init_op)
+
+with sess1.as_default() as sess:
+  print(sess.run(sess.graph.get_tensor_by_name('a:0'))) # prints 0
+
+with sess2.as_default() as sess:
+  print(sess.run(sess.graph.get_tensor_by_name('a:0'))) # prints 1
+
+with graph2.as_default() as g:
+  with sess1.as_default() as sess:
+    print(tf.get_default_graph() == graph2) # prints True
+    print(tf.get_default_session() == sess1) # prints True
+
+    # This is the interesting line
+    print(sess.run(sess.graph.get_tensor_by_name('a:0'))) # prints 0
+    print(sess.run(g.get_tensor_by_name('a:0'))) # fails
+
+print(tf.get_default_graph() == graph2) # prints False
+print(tf.get_default_session() == sess1) # prints False
+```
+
+You don't need to call `sess.graph.as_default()` to run the graph, but you need to get the correct tensors or operations in the graph to run it. The context allows you to get the graph or session using `tf.get_default_graph` or `tf.get_default_session`.
+
+In the interesting line above, the default session is `sess1` and it is implicitly calling `sess1.graph`, which is the graph in `sess1`, which is `graph1`, and hence it prints 0.
+
+In the line following that, it fails because it is trying to run an operation in `graph2` with `sess1`.
+
+<https://stackoverflow.com/questions/45093688/how-to-understand-sess-as-default-and-sess-graph-as-default>
+
+
+
+
+
+#### multiple graph in one process
+
+refer:
+
+<https://tensorflow.google.cn/guide/graphs>
+
+**注意**：训练模型时，整理代码的一种常用方法是使用一个图训练模型，然后使用另一个图对训练过的模型进行评估或推理。在许多情况下，推理图与训练图不同：例如，丢弃和批次标准化等技术在每种情形下使用不同的操作。此外，默认情况下，[`tf.train.Saver`](https://tensorflow.google.cn/api_docs/python/tf/train/Saver) 等实用程序使用 [`tf.Variable`](https://tensorflow.google.cn/api_docs/python/tf/Variable) 对象的名称（此类对象的名称基于底层 [`tf.Operation`](https://tensorflow.google.cn/api_docs/python/tf/Operation)）来识别已保存检查点中的每个变量。采用这种方式编程时，您可以使用完全独立的 Python 进程来构建和执行图，或者在同一进程中使用多个图。此部分介绍了如何在同一进程中使用多个图。
+
+```python
+g_1 = tf.Graph()
+with g_1.as_default():
+  # Operations created in this scope will be added to `g_1`.
+  c = tf.constant("Node in g_1")
+
+  # Sessions created in this scope will run operations from `g_1`.
+  sess_1 = tf.Session()
+
+g_2 = tf.Graph()
+with g_2.as_default():
+  # Operations created in this scope will be added to `g_2`.
+  d = tf.constant("Node in g_2")
+
+# Alternatively, you can pass a graph when constructing a <a href="../api_docs/python/tf/Session"><code>tf.Session</code></a>:
+# `sess_2` will run operations from `g_2`.
+sess_2 = tf.Session(graph=g_2)
+
+assert c.graph is g_1
+assert sess_1.graph is g_1
+
+assert d.graph is g_2
+assert sess_2.graph is g_2
+```
+
+
+
+
+
+可能的错误：
+
+ValueError: Tensor Tensor("Placeholder:0", shape=(3, 3, 3, 16), dtype=float32) is not an element of this graph.
+
+ValueError: Variable w already exists, disallowed. Did you mean to set reuse=True or reuse=tf.AUTO_REUSE in VarScope?
+
+解决方法：
+
+1. 在初始sess、build graph、restore model之前，reset the graph using `tf.reset_default_graph() `，并且predict使用该sess进行预测。
+
+   ```python
+   ...
+   self.sess = tf.Session(config=config)
+   self.model = Graph(self.batch_size, self.embed_size, self.class_num,
+                              self.vocab_size, self.sentence_size, self.sample_size,self.learning_rate,
+                              False, self.decay_step, self.decay_rate, self.l2_lambda)
+   self.saver = tf.train.Saver()
+   self.saver.restore(self.sess, tf.train.latest_checkpoint(checkpoint_path))
+   ...
+   predictions, logits = self.sess.run([self.model.predict, self.model.probs],
+                                               feed_dict={self.model.x: questions})
+   ```
+
+   
+
+2. create a new graph each time
+
+   ```py
+   with tf.Graph().as_default():
+       ...
+   ```
+   
+   Essentially, unless you explicitly construct a `tf.Graph` and set it as default using the `with` construct, all nodes will be added to a global graph that is only destroyed at the end of the process. (This is not ideal, but it makes some other use cases much easier.) Using the `with` block ensures that the graph is deregistered at the end of the block, which should give you the desired behavior—and avoid a memory leak! 
+   
+
+<https://stackoverflow.com/questions/34112202/tensorflow-checkpoint-save-and-read>
+
+
+
+3. create a new graph and session each time
+
+   If you want to use multiple models across modules, this is a solution that worked for me. I created a new Model class with its own tf graph session instance, and then loaded the model inside a static method. This way whenever a model loads its weights, it knows which graph session to use (the one of its instance).
+
+   ```
+   from tensorflow import Graph, Session
+   
+   class Model:
+       @staticmethod
+       def loadmodel(path):
+           return loadmodel(path)
+   
+       def ___init__(self, path):
+          self.model = self.loadmodel(path)
+          self.graph = Graph()
+          self.sess = Session()
+   	
+       def predict(self, X):
+           with self.graph.as_default():
+           	with self.sess.as_default():
+   	            return self.model.predict(X)
+   
+   model1 = Model('model1.h5')
+   model1.predict(test_data)
+   
+   model2 = Model('model2.h5')
+   model2.predict(test_data)
+   ```
+
+   
+
+   This is because the keras share a global session if no default tf session provided
+
+   When the model1 created, it is on graph1
+   When the model1 loads weight, the weight is on a keras global session which is associated with graph1
+
+   When the model2 created, it is on graph2
+   When the model2 loads weight, the global session does not know the graph2
+
+   A solution below may help,
+
+   ```
+   graph1 = Graph()
+   with graph1.as_default():
+       session1 = Session()
+       with session1.as_default():
+           with open('model1_arch.json') as arch_file:
+               model1 = model_from_json(arch_file.read())
+           model1.load_weights('model1_weights.h5')
+           # K.get_session() is session1
+   
+   # do the same for graph2, session2, model2
+   ```
+
+   more:
+
+   <https://github.com/keras-team/keras/issues/8538>
+
+   <https://github.com/keras-team/keras/issues/2397#issuecomment-385317242>
+
+   
+
+4. If you want them into same graph. You'll have to rename some variables. One idea is have each model in separate scope and let saver handle variables in that scope e.g.:
+
+   ```
+   saver = tf.train.Saver(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES), scope='model1')
+   ```
+
+   and in model wrap all your construction in scope:
+
+   ```
+   with tf.variable_scope('model1'):
+       ...
+   ```
+
+   <https://stackoverflow.com/questions/41990014/load-multiple-models-in-tensorflow/41991989#41991989>
+
+5. 在predict之后，清除session
+
+   ```python
+   from keras import backend as K
+   
+   ......
+   
+   K.clear_session()
+   ```
+
+   Keras doesn't directly have a session because it supports multiple backends. Assuming you use TF as backend, you can get the global session as:
+
+   ```py
+   from keras import backend as K
+   sess = K.get_session()
+   ```
+
+   If, on the other hand, yo already have an open `Session` and want to set it as the session Keras should use, you can do so via:
+
+   ```py
+   K.set_session(sess)
+   ```
+
+   ```python
+   from keras import backend as K
+   
+   with tf.Graph().as_default():
+   
+       with tf.Session() as sess:
+   
+           K.set_session(sess)
+           model = load_model(model_path)
+           preds = model.predict(in_data)
+   ```
+
+   
+
+
+
+
+
+
+
+
+
+#### 'Tensor' object is not callable
+
+可能是把tensor变量的使用误写成了函数的形式
 
 
 
@@ -92,13 +354,61 @@ Downgrade TensorFlow to 1.8.0 using:
 
 
 
+#### GPU/CPU
+
+##### ConfigProto
+
+<https://blog.csdn.net/dcrmg/article/details/79091941>
+
+```python
+config = tf.ConfigProto(log_device_placement=True,  # 记录设备指派情况
+                        allow_soft_placement=True)  # 自动选择运行设备
+config.gpu_options.per_process_gpu_memory_fraction = 0.4  # 限制GPU使用率
+config.gpu_options.allow_growth = True  # 动态申请显存
+sess = tf.Session(config=config)
+```
 
 
-#### GPU
+
+##### GPU
 
 https://tensorflow.google.cn/guide/using_gpu
 
 https://tensorflow.google.cn/install/gpu
+
+
+
+Get available GPUs:
+
+```python
+from tensorflow.python.client import device_lib
+
+def get_available_gpus():
+    local_device_protos = device_lib.list_local_devices()
+    return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+
+tf.test.gpu_device_name()
+tf.test.is_gpu_available() 
+
+Attention:
+Calling the above functions will run some initialization code that, by default, will allocate all of the GPU memory on all of the devices (GitHub issue). To avoid this, first create a session with an explicitly small per_process_gpu_fraction, or allow_growth=True, to prevent all of the memory being allocated.
+```
+
+
+
+
+
+Set GPUs:
+
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1'  # 设置使用哪块GPU
+
+
+
+
+
+
 
 ##### estimator with GPU
 
@@ -278,7 +588,7 @@ sudo reboot
 
 
 
-#### CPU
+##### CPU
 
 ##### [Tensorflow: executing an ops with a specific core of a CPU](https://stackoverflow.com/questions/37864081/tensorflow-executing-an-ops-with-a-specific-core-of-a-cpu)
 
