@@ -1,4 +1,21 @@
+
+
+##### Linux CPU个数，核心，线程数
+
+CPU 个数
+
+grep 'physical id' /proc/cpuinfo | sort -u
+
+CPU 核心数
+
+grep 'core id' /proc/cpuinfo | sort -u | wc -l
+
+CPU 线程数
+
+grep 'processor' /proc/cpuinfo | sort -u | wc -l
+
 ##### 查看22端口现在运行的情况 
+
 lsof -i :22
 
 ```text
@@ -21,6 +38,20 @@ sshd    1409 root    3u  IPv6   5678       TCP *:ssh (LISTEN)
 通过 ll /proc/{进程号}/cwd查看运行目录
 
 `ll /proc/22521/cwd`
+
+
+
+#### top命令参数详解
+
+more: <https://blog.csdn.net/yjclsx/article/details/81508455>
+
+在top基本视图中，按键盘数字“1”可以监控每个逻辑CPU的状况
+
+按键盘‘b’（打开关闭加亮效果）
+
+按键盘‘x’（打开/关闭排序列的加亮效果）
+
+
 
 
 

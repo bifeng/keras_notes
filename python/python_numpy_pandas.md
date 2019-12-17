@@ -1,5 +1,16 @@
 #### Numpy
 
+##### replace with np.nan
+
+`np.nan` has type `float`: arrays containing it must also have this datatype (or the `complex` or `object` datatype) so you may need to cast `arr` before you try to assign this value.
+
+```python
+>>> arr = arr.astype('float')
+>>> arr[arr == 0] = np.nan
+```
+
+<https://stackoverflow.com/questions/27778299/replace-the-zeros-in-a-numpy-integer-array-with-nan?noredirect=1>
+
 ##### ndindex
 
 <https://docs.scipy.org/doc/numpy-1.13.0/reference/generated/numpy.ndindex.html>
@@ -163,6 +174,18 @@ numpy.random.randn(d0,d1,…,dn)
 
 
 #### Pandas
+
+##### types introspection
+
+<https://pandas.pydata.org/pandas-docs/stable/reference/general_utility_functions.html>
+
+```python
+import pandas.api.types as ptypes
+```
+
+
+
+
 
 ##### compare dataframe and get the difference
 

@@ -1,12 +1,8 @@
 more:
 
-http://www.runoob.com/python/python-multithreading.html
-
-[Python中threading的join和setDaemon的区别及用法［例子］](https://blog.csdn.net/zhangzheng0413/article/details/41728869)
-
-[Python多线程编程中daemon属性的作用](https://blog.csdn.net/dongfuguo/article/details/53899426)
-
 [**python实现多线程post方法进行压测脚本模板**](https://blog.csdn.net/henni_719/article/details/73188918)
+
+
 
 
 

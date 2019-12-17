@@ -1,3 +1,56 @@
+## Python 风格指南
+
+<https://zh-google-styleguide.readthedocs.io/en/latest/google-python-styleguide/python_language_rules/>
+
+
+
+
+
+### Chapter 1
+
+
+
+#### partial functions
+
+**Partial** functions allow one to derive a function with x parameters to a function with fewer parameters and fixed values set for the more limited function.
+
+```python
+from functools import partial
+```
+
+
+
+#### [How do you split a list into evenly sized chunks?](https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks)
+
+```
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+```
+
+------
+
+```
+import pprint
+pprint.pprint(list(chunks(range(10, 75), 10)))
+```
+
+
+
+#### [Can Python print a function definition?](https://stackoverflow.com/questions/1562759/can-python-print-a-function-definition)
+
+```
+>>> import re
+>>> import inspect
+>>> print inspect.getsource(re.compile)
+def compile(pattern, flags=0):
+    "Compile a regular expression pattern, returning a pattern object."
+    return _compile(pattern, flags)
+```
+
+
+
 #### add default parameter value with type hint
 
 https://stackoverflow.com/questions/38727520/adding-default-parameter-value-with-type-hint-in-python
