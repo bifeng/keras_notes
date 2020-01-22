@@ -49,7 +49,7 @@ more: <https://www.quora.com/How-do-I-convert-a-Neo4j-graph-to-a-Networkx-graph>
 
  just add `with_labels=True` to the `nx.draw` call.
 
-```
+```python
 import networkx as nx
 import pylab as plt
 
@@ -65,6 +65,24 @@ labeldict["Node2"] = "angry man with parrot"
 
 nx.draw(G, labels=labeldict, with_labels = True)
 ```
+
+
+
+```python
+import networkx as nx
+import community
+
+G = nx.random_graphs.powerlaw_cluster_graph(300, 1, .4)
+
+part = community.best_partition(G)
+values = [part.get(node) for node in G.nodes()]
+
+nx.draw_spring(G, cmap = plt.get_cmap('jet'), node_color = values, node_size=30, with_labels=False)
+mod = community.modularity(part,G)
+print("modularity:", mod)
+```
+
+
 
 
 
